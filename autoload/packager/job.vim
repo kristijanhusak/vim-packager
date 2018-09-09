@@ -248,19 +248,19 @@ function! s:job_wait(jobids, timeout) abort
 endfunction
 
 " public apis {{{
-function! vim_packager#job#start(cmd, opts) abort
+function! packager#job#start(cmd, opts) abort
     return s:job_start(a:cmd, a:opts)
 endfunction
 
-function! vim_packager#job#stop(jobid) abort
+function! packager#job#stop(jobid) abort
     call s:job_stop(a:jobid)
 endfunction
 
-function! vim_packager#job#send(jobid, data) abort
+function! packager#job#send(jobid, data) abort
     call s:job_send(a:jobid, a:data)
 endfunction
 
-function! vim_packager#job#wait(jobids, ...) abort
+function! packager#job#wait(jobids, ...) abort
     let l:timeout = get(a:000, 0, -1)
     return s:job_wait(a:jobids, l:timeout)
 endfunction
