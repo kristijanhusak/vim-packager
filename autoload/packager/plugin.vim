@@ -34,12 +34,10 @@ function! s:plugin.update_status(status, text) abort
 endfunction
 
 function! s:plugin.git_command(depth) abort
-  echom 'DEPTH'
-  echom a:depth
   if isdirectory(self.dir)
-    return ['git', '--depth', a:depth, '-C', self.dir, 'pull', '--ff-only', '--progress']
+    return ['git', '-C', self.dir, 'pull', '--ff-only', '--progress']
   endif
-  return ['git', 'clone','--depth', a:depth, '--progress', self.url, self.dir]
+  return ['git', 'clone', '--progress', self.url, self.dir, '--depth', a:depth]
 endfunction
 
 function! s:plugin.has_updates() abort

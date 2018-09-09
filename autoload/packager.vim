@@ -21,7 +21,11 @@ function! s:packager.new(opts) abort
 endfunction
 
 function! s:packager.add(name, opts) abort
-  call add(self.plugins, packager#plugin#new(a:name, a:opts, self.dir))
+  let l:plugin = packager#plugin#new(a:name, a:opts, self.dir)
+  if len(filter(copy(self.plugins), printf('v:val.name ==? "%s"', l:plugin.name))) > 0
+    return
+  endif
+  return add(self.plugins, l:plugin)
 endfunction
 
 function! s:packager.update_top_status() abort
