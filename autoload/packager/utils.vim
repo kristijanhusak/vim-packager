@@ -40,3 +40,20 @@ function! packager#utils#confirm(question) abort
     return 0
   endtry
 endfunction
+
+function! packager#utils#update_remote_plugins(plugins) abort
+  for l:plugin in a:plugins
+    if l:plugin.updated && isdirectory(printf('%s/rplugin', l:plugin.dir))
+      call s:add_rtp(l:plugin.dir)
+      exe 'UpdateRemotePlugins'
+    endif
+  endfor
+endfunction
+
+function! s:add_rtp(path)
+  if empty(&rtp)
+    let &rtp = a:path
+  else
+    let &rtp .= printf(',%s', a:path)
+  endif
+endfunction

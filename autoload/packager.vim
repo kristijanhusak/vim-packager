@@ -28,6 +28,88 @@ function! s:packager.add(name, opts) abort
   return add(self.plugins, l:plugin)
 endfunction
 
+function! s:packager.install(opts) abort
+  let self.result = []
+  let self.remaining_jobs = len(self.plugins)
+  let self.install_opts = a:opts
+  call self.open_buffer()
+  call self.update_top_status()
+  for l:plugin in self.plugins
+    call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
+  endfor
+endfunction
+
+function! s:packager.clean() abort
+  let l:folders = glob(printf('%s/*/*', self.dir), 0, 1)
+  let l:plugins = map(copy(self.plugins), 'v:val.dir')
+  function! s:clean_filter(plugins, key, val)
+    return index(a:plugins, a:val) < 0
+  endfunction
+
+  let l:to_clean = filter(copy(l:folders), function('s:clean_filter', [l:plugins]))
+
+  if len(l:to_clean) <=? 0
+    echo 'Already clean.'
+    return 0
+  endif
+
+  call self.open_buffer()
+  call setline(1, 'Clean up.')
+  call setline(2, '')
+
+  for l:item in l:to_clean
+    call append(2, packager#utils#status_progress(l:item, 'Waiting for confirmation...'))
+  endfor
+
+  if !packager#utils#confirm('Remove above folder(s)?')
+    return self.quit()
+  endif
+
+  for l:item in l:to_clean
+    let l:line = search(printf('^+\s%s', l:item), 'n')
+    if delete(l:item, 'rf') !=? 0
+      call setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
+    else
+      call setline(l:line, packager#utils#status_ok(l:item, 'Removed!'))
+    endif
+  endfor
+endfunction
+
+function! s:packager.status() abort
+  let l:result = []
+
+  for l:plugin in self.plugins
+    if !l:plugin.installed
+      call add(l:result, packager#utils#status_error(l:plugin.name, 'Not installed.'))
+      continue
+    endif
+    if empty(l:plugin.last_update)
+      call add(l:result, packager#utils#status_ok(l:plugin.name, 'OK.'))
+      continue
+    endif
+
+    call add(l:result, packager#utils#status_ok(l:plugin.name, 'Updated.'))
+    for l:update in l:plugin.last_update
+      call add(l:result, printf('  * %s', l:update))
+    endfor
+  endfor
+
+  call self.open_buffer()
+  call setline(1, 'Plugin status.')
+  call setline(2, '')
+  call append(2, l:result)
+  set nomodifiable
+endfunction
+
+function! s:packager.quit()
+  if self.remaining_jobs > 0
+    if !packager#utils#confirm('Installation is in progress. Are you sure you want to quit?')
+      return
+    endif
+  endif
+  silent exe ':q!'
+endfunction
+
 function! s:packager.update_top_status() abort
   let l:total = len(self.plugins)
   let l:installed = l:total - self.remaining_jobs
@@ -52,6 +134,8 @@ function! s:packager.post_update_hooks() abort
   if getbufvar(bufname('%'), '&filetype') ==? 'packager'
     setlocal nomodifiable
   endif
+
+  call packager#utils#update_remote_plugins(self.plugins)
 
   if has_key(self, 'install_opts') && has_key(self.install_opts, 'on_finish')
     exe self.install_opts.on_finish
@@ -132,90 +216,18 @@ function! s:packager.goto_plugin(dir) abort
   return search(printf('^\(%s\)\s.*$', l:icons), l:flag)
 endfunction
 
-function! s:packager.quit()
-  if self.remaining_jobs > 0
-    if !packager#utils#confirm('Installation is in progress. Are you sure you want to quit?')
-      return
-    endif
-  endif
-  silent exe ':q!'
-endfunction
+function! s:packager.start_job(cmd, handler, plugin, ...) abort
+  let l:opts = {
+        \ 'on_stdout': function(a:handler, [a:plugin], self),
+        \ 'on_stderr': function(a:handler, [a:plugin], self),
+        \ 'on_exit': function(a:handler, [a:plugin], self)
+        \ }
 
-function! s:packager.install(opts) abort
-  let self.result = []
-  let self.remaining_jobs = len(self.plugins)
-  let self.install_opts = a:opts
-  call self.open_buffer()
-  call self.update_top_status()
-  for l:plugin in self.plugins
-    call packager#job#start(l:plugin.git_command(self.depth), {
-          \ 'on_stdout': function('s:stdout_handler', [l:plugin], self),
-          \ 'on_stderr': function('s:stdout_handler', [l:plugin], self),
-          \ 'on_exit': function('s:stdout_handler', [l:plugin], self),
-          \ })
-  endfor
-endfunction
-
-function! s:packager.clean() abort
-  let l:folders = glob(printf('%s/*/*', self.dir), 0, 1)
-  let l:plugins = map(copy(self.plugins), 'v:val.dir')
-  function! s:clean_filter(plugins, key, val)
-    return index(a:plugins, a:val) < 0
-  endfunction
-
-  let l:to_clean = filter(copy(l:folders), function('s:clean_filter', [l:plugins]))
-
-  if len(l:to_clean) <=? 0
-    echo 'Already clean.'
-    return 0
+  if a:0 > 0
+    let l:opts.cwd = a:1
   endif
 
-  call self.open_buffer()
-  call setline(1, 'Clean up.')
-  call setline(2, '')
-
-  for l:item in l:to_clean
-    call append(2, packager#utils#status_progress(l:item, 'Waiting for confirmation...'))
-  endfor
-
-  if !packager#utils#confirm('Remove above folder(s)?')
-    return self.quit()
-  endif
-
-  for l:item in l:to_clean
-    let l:line = search(printf('^+\s%s', l:item), 'n')
-    if delete(l:item, 'rf') !=? 0
-      call setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
-    else
-      call setline(l:line, packager#utils#status_ok(l:item, 'Removed!'))
-    endif
-  endfor
-endfunction
-
-function! s:packager.status() abort
-  let l:result = []
-
-  for l:plugin in self.plugins
-    if !l:plugin.installed
-      call add(l:result, packager#utils#status_error(l:plugin.name, 'Not installed.'))
-      continue
-    endif
-    if empty(l:plugin.last_update)
-      call add(l:result, packager#utils#status_ok(l:plugin.name, 'OK.'))
-      continue
-    endif
-
-    call add(l:result, packager#utils#status_ok(l:plugin.name, 'Updated.'))
-    for l:update in l:plugin.last_update
-      call add(l:result, printf('  * %s', l:update))
-    endfor
-  endfor
-
-  call self.open_buffer()
-  call setline(1, 'Plugin status.')
-  call setline(2, '')
-  call append(2, l:result)
-  set nomodifiable
+  return packager#job#start(a:cmd, l:opts)
 endfunction
 
 function! s:hook_stdout_handler(plugin, id, message, event) dict
@@ -261,12 +273,7 @@ function! s:stdout_handler(plugin, id, message, event) dict
       endtry
       call self.update_top_status_installed()
     else
-      let l:hook_job = packager#job#start(a:plugin.do, {
-            \ 'cwd': a:plugin.dir,
-            \ 'on_stdout': function('s:hook_stdout_handler', [a:plugin], self),
-            \ 'on_stderr': function('s:hook_stdout_handler', [a:plugin], self),
-            \ 'on_exit': function('s:hook_stdout_handler', [a:plugin], self),
-            \ })
+      call self.start_job(a:plugin.do, 's:hook_stdout_handler', a:plugin, a:plugin.dir)
     endif
   else
     call self.update_top_status_installed()
