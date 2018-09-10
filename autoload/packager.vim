@@ -135,9 +135,10 @@ function! s:packager.post_update_hooks() abort
     setlocal nomodifiable
   endif
 
-  call packager#utils#update_remote_plugins(self.plugins)
+  call self.update_remote_plugins_and_helptags()
 
   if has_key(self, 'install_opts') && has_key(self.install_opts, 'on_finish')
+    silent! exe 'redraw'
     exe self.install_opts.on_finish
   endif
 endfunction
@@ -214,6 +215,19 @@ function! s:packager.goto_plugin(dir) abort
   let l:icons = join(values(packager#utils#status_icons()), '\|')
   let l:flag = a:dir ==? 'previous' ? 'b': ''
   return search(printf('^\(%s\)\s.*$', l:icons), l:flag)
+endfunction
+
+function! s:packager.update_remote_plugins_and_helptags() abort
+  for l:plugin in self.plugins
+    if l:plugin.updated
+      silent! exe 'helptags' fnameescape(printf('%s/doc', l:plugin.dir))
+
+      if has('nvim') && isdirectory(printf('%s/rplugin', l:plugin.dir))
+        call packager#utils#add_rtp(l:plugin.dir)
+        exe 'UpdateRemotePlugins'
+      endif
+    endif
+  endfor
 endfunction
 
 function! s:packager.start_job(cmd, handler, plugin, ...) abort
