@@ -15,9 +15,9 @@ function! packager#add(name, ...) abort
   return g:packager.add(a:name, a:000)
 endfunction
 
-function! packager#install() abort
+function! packager#install(...) abort
   call packager#init()
-  return g:packager.install()
+  return g:packager.install(a:0 > 0 ? a:1 : {})
 endfunction
 
 function! packager#clean() abort

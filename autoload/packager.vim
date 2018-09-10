@@ -43,11 +43,19 @@ function! s:packager.update_top_status_installed() abort
 endfunction
 
 function! s:packager.post_update_hooks() abort
-  if getbufvar(bufname('%'), '&filetype') !=? 'packager'
+  if has_key(self, 'post_update_hook_called')
     return
   endif
 
-  setlocal nomodifiable
+  let self.post_update_hook_called = 1
+
+  if getbufvar(bufname('%'), '&filetype') ==? 'packager'
+    setlocal nomodifiable
+  endif
+
+  if has_key(self, 'install_opts') && has_key(self.install_opts, 'on_finish')
+    exe self.install_opts.on_finish
+  endif
 endfunction
 
 function! s:packager.open_buffer() abort
@@ -133,9 +141,10 @@ function! s:packager.quit()
   silent exe ':q!'
 endfunction
 
-function! s:packager.install() abort
+function! s:packager.install(opts) abort
   let self.result = []
   let self.remaining_jobs = len(self.plugins)
+  let self.install_opts = a:opts
   call self.open_buffer()
   call self.update_top_status()
   for l:plugin in self.plugins
@@ -218,10 +227,14 @@ function! s:hook_stdout_handler(plugin, id, message, event) dict
   call self.update_top_status_installed()
   "TODO: Add better message
   if a:message !=? 0
-    return a:plugin.update_status('error', printf('Error on hook - status %s', a:message))
+    call a:plugin.update_status('error', printf('Error on hook - status %s', a:message))
+  else
+    call a:plugin.update_status('ok', 'Finished running post update hook!')
   endif
 
-  return a:plugin.update_status('ok', 'Finished running post update hook!')
+  if self.remaining_jobs <=? 0
+    call self.post_update_hooks()
+  endif
 endfunction
 
 function! s:stdout_handler(plugin, id, message, event) dict
