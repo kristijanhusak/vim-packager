@@ -20,6 +20,11 @@ function! packager#install(...) abort
   return g:packager.install(a:0 > 0 ? a:1 : {})
 endfunction
 
+function! packager#update(...) abort
+  call packager#init()
+  return g:packager.update(a:0 > 0 ? a:1 : {})
+endfunction
+
 function! packager#clean() abort
   call packager#init()
   return g:packager.clean()

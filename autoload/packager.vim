@@ -14,6 +14,7 @@ function! s:packager.new(opts) abort
     let l:instance.dir = substitute(fnamemodify(a:opts.dir, ':p'), '\/$', '', '')
   endif
   let l:instance.plugins = []
+  let l:instance.processed_plugins = []
   let l:instance.remaining_jobs = 0
   silent! call mkdir(printf('%s/%s', l:instance.dir, 'opt'), 'p')
   silent! call mkdir(printf('%s/%s', l:instance.dir, 'start'), 'p')
@@ -30,20 +31,45 @@ endfunction
 
 function! s:packager.install(opts) abort
   let self.result = []
-  let self.remaining_jobs = len(self.plugins)
-  let self.install_opts = a:opts
+  let self.processed_plugins = filter(copy(self.plugins), 'v:val.installed ==? 0')
+  let self.remaining_jobs = len(self.processed_plugins)
+
+  if self.remaining_jobs ==? 0
+    echo 'Nothing to install.'
+    return
+  endif
+
+  let self.post_run_opts = a:opts
   call self.open_buffer()
   call self.update_top_status()
-  for l:plugin in self.plugins
-    if !l:plugin.frozen
-      call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
-    endif
+  for l:plugin in self.processed_plugins
+    call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
+  endfor
+endfunction
+
+function! s:packager.update(opts) abort
+  let self.result = []
+  let self.processed_plugins = filter(copy(self.plugins), 'v:val.frozen ==? 0')
+  let self.remaining_jobs = len(self.processed_plugins)
+
+  if self.remaining_jobs ==? 0
+    echo 'Nothing to update.'
+    return
+  endif
+
+  let self.post_run_opts = a:opts
+  let self.command_type = 'update'
+  call self.open_buffer()
+  call self.update_top_status()
+  for l:plugin in self.processed_plugins
+    call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
   endfor
 endfunction
 
 function! s:packager.clean() abort
   let l:folders = glob(printf('%s/*/*', self.dir), 0, 1)
-  let l:plugins = map(copy(self.plugins), 'v:val.dir')
+  let self.processed_plugins = copy(self.plugins)
+  let l:plugins = map(copy(self.processed_plugins), 'v:val.dir')
   function! s:clean_filter(plugins, key, val)
     return index(a:plugins, a:val) < 0
   endfunction
@@ -79,8 +105,9 @@ endfunction
 
 function! s:packager.status() abort
   let l:result = []
+  let self.processed_plugins = copy(self.plugins)
 
-  for l:plugin in self.plugins
+  for l:plugin in self.processed_plugins
     if !l:plugin.installed
       call add(l:result, packager#utils#status_error(l:plugin.name, 'Not installed.'))
       continue
@@ -113,7 +140,7 @@ function! s:packager.quit()
 endfunction
 
 function! s:packager.update_top_status() abort
-  let l:total = len(self.plugins)
+  let l:total = len(self.processed_plugins)
   let l:installed = l:total - self.remaining_jobs
   let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished!'
   call setline(1, printf('Installed plugins %d / %d%s', l:installed, l:total, l:finished))
@@ -126,12 +153,12 @@ function! s:packager.update_top_status_installed() abort
   return self.update_top_status()
 endfunction
 
-function! s:packager.post_update_hooks() abort
-  if has_key(self, 'post_update_hook_called')
+function! s:packager.run_post_update_hooks() abort
+  if has_key(self, 'post_run_hooks_called')
     return
   endif
 
-  let self.post_update_hook_called = 1
+  let self.post_run_hooks_called = 1
 
   if getbufvar(bufname('%'), '&filetype') ==? 'packager'
     setlocal nomodifiable
@@ -139,13 +166,14 @@ function! s:packager.post_update_hooks() abort
 
   call self.update_remote_plugins_and_helptags()
 
-  if has_key(self, 'install_opts') && has_key(self.install_opts, 'on_finish')
+  if has_key(self, 'post_run_opts') && has_key(self.post_run_opts, 'on_finish')
     silent! exe 'redraw'
-    exe self.install_opts.on_finish
+    exe self.post_run_opts.on_finish
   endif
 endfunction
 
 function! s:packager.open_buffer() abort
+  "TODO Check if already opened and reuse
   vertical topleft new
   setf packager
   setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell
@@ -203,7 +231,7 @@ function! s:packager.open_sha() abort
 endfunction
 
 function! s:packager.find_plugin_by_sha(sha) abort
-  for l:plugin in self.plugins
+  for l:plugin in self.processed_plugins
     let l:commits = filter(copy(l:plugin.last_update), printf("v:val =~? '^%s'", a:sha))
     if len(l:commits) > 0
       return l:plugin
@@ -220,7 +248,7 @@ function! s:packager.goto_plugin(dir) abort
 endfunction
 
 function! s:packager.update_remote_plugins_and_helptags() abort
-  for l:plugin in self.plugins
+  for l:plugin in self.processed_plugins
     if l:plugin.updated
       silent! exe 'helptags' fnameescape(printf('%s/doc', l:plugin.dir))
 
@@ -261,7 +289,7 @@ function! s:hook_stdout_handler(plugin, id, message, event) dict
   endif
 
   if self.remaining_jobs <=? 0
-    call self.post_update_hooks()
+    call self.run_post_update_hooks()
   endif
 endfunction
 
@@ -296,6 +324,6 @@ function! s:stdout_handler(plugin, id, message, event) dict
   endif
 
   if self.remaining_jobs <=? 0
-    call self.post_update_hooks()
+    call self.run_post_update_hooks()
   endif
 endfunction
