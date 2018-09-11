@@ -21,7 +21,7 @@ function! s:packager.new(opts) abort
 endfunction
 
 function! s:packager.add(name, opts) abort
-  let l:plugin = packager#plugin#new(a:name, a:opts, self.dir)
+  let l:plugin = packager#plugin#new(a:name, a:opts, self)
   if len(filter(copy(self.plugins), printf('v:val.name ==? "%s"', l:plugin.name))) > 0
     return
   endif
@@ -35,7 +35,9 @@ function! s:packager.install(opts) abort
   call self.open_buffer()
   call self.update_top_status()
   for l:plugin in self.plugins
-    call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
+    if !l:plugin.frozen
+      call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
+    endif
   endfor
 endfunction
 

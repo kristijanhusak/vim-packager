@@ -1,16 +1,16 @@
 let s:plugin = {}
-let s:defaults = { 'dir': '', 'url': '', 'name': '', 'type': 'start', 'package_dir': '',
-      \ 'branch': '', 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'last_update': [] }
+let s:defaults = { 'name': '', 'type': 'start', 'branch': '', 'commit': '', 'tag': '',
+      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'last_update': [], 'frozen': 0 }
 
-function! packager#plugin#new(name, opts, package_dir) abort
-  return s:plugin.new(a:name, a:opts, a:package_dir)
+function! packager#plugin#new(name, opts, packager) abort
+  return s:plugin.new(a:name, a:opts, a:packager)
 endfunction
 
-function! s:plugin.new(name, opts, package_dir) abort
+function! s:plugin.new(name, opts, packager) abort
   let l:instance = extend(copy(self), extend(copy(get(a:opts, 0, {})), s:defaults, 'keep'))
-  let l:instance.package_dir = a:package_dir
+  let l:instance.packager = a:packager
   let l:instance.name = !empty(l:instance.name) ? l:instance.name : split(a:name, '/')[-1]
-  let l:instance.dir = printf('%s/%s/%s', a:package_dir, l:instance.type, l:instance.name)
+  let l:instance.dir = printf('%s/%s/%s', a:packager.dir, l:instance.type, l:instance.name)
   let l:instance.url = a:name =~? '^http.*' ? a:name : printf('https://github.com/%s', a:name)
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
@@ -34,11 +34,46 @@ function! s:plugin.update_status(status, text) abort
   return append(2, packager#utils#status(a:status, self.name, a:text))
 endfunction
 
+function! s:plugin.update_git_command() abort
+  let l:update_cmd = ['cd', self.dir, '&&', 'git', 'pull', '--ff-only', '--progress']
+
+  for l:checkout_target in [self.commit, self.tag]
+    if !empty(l:checkout_target)
+      return l:update_cmd + ['&&', 'git', 'checkout', l:checkout_target]
+    endif
+  endfor
+
+  return l:update_cmd
+endfunction
+
+function! s:plugin.install_git_command(depth) abort
+  let l:requires_checkout = !empty(self.tag) || !empty(self.commit)
+  let l:depth = l:requires_checkout ? '999999' : a:depth
+  let l:clone_cmd = ['git', 'clone', '--progress', self.url, self.dir, '--depth', l:depth]
+
+  if !empty(self.branch) && !l:requires_checkout
+    let l:clone_cmd += ['--branch', self.branch]
+  endif
+
+  if l:requires_checkout
+    let l:clone_cmd += ['&&', 'cd', self.dir]
+  endif
+
+  for l:checkout_target in [self.commit, self.tag]
+    if !empty(l:checkout_target)
+      return l:clone_cmd + ['&&', 'git', 'checkout', l:checkout_target]
+    endif
+  endfor
+
+  return l:clone_cmd
+endfunction
+
 function! s:plugin.git_command(depth) abort
   if isdirectory(self.dir)
-    return ['git', '-C', self.dir, 'pull', '--ff-only', '--progress']
+    return join(self.update_git_command(), ' ')
   endif
-  return ['git', 'clone', '--progress', self.url, self.dir, '--depth', a:depth]
+
+  return join(self.install_git_command(a:depth), ' ')
 endfunction
 
 function! s:plugin.has_updates() abort
