@@ -13,8 +13,8 @@ function! s:packager.new(opts) abort
   if has_key(a:opts, 'dir')
     let l:instance.dir = substitute(fnamemodify(a:opts.dir, ':p'), '\/$', '', '')
   endif
-  let l:instance.plugins = []
-  let l:instance.processed_plugins = []
+  let l:instance.plugins = {}
+  let l:instance.processed_plugins = {}
   let l:instance.remaining_jobs = 0
   silent! call mkdir(printf('%s/%s', l:instance.dir, 'opt'), 'p')
   silent! call mkdir(printf('%s/%s', l:instance.dir, 'start'), 'p')
@@ -23,10 +23,7 @@ endfunction
 
 function! s:packager.add(name, opts) abort
   let l:plugin = packager#plugin#new(a:name, a:opts, self)
-  if len(filter(copy(self.plugins), printf('v:val.name ==? "%s"', l:plugin.name))) > 0
-    return
-  endif
-  return add(self.plugins, l:plugin)
+  let self.plugins[l:plugin.name] = l:plugin
 endfunction
 
 function! s:packager.install(opts) abort
@@ -42,7 +39,7 @@ function! s:packager.install(opts) abort
   let self.post_run_opts = a:opts
   call self.open_buffer()
   call self.update_top_status()
-  for l:plugin in self.processed_plugins
+  for l:plugin in values(self.processed_plugins)
     call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
   endfor
 endfunction
@@ -61,7 +58,7 @@ function! s:packager.update(opts) abort
   let self.command_type = 'update'
   call self.open_buffer()
   call self.update_top_status()
-  for l:plugin in self.processed_plugins
+  for l:plugin in values(self.processed_plugins)
     call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
   endfor
 endfunction
@@ -69,7 +66,7 @@ endfunction
 function! s:packager.clean() abort
   let l:folders = glob(printf('%s/*/*', self.dir), 0, 1)
   let self.processed_plugins = copy(self.plugins)
-  let l:plugins = map(copy(self.processed_plugins), 'v:val.dir')
+  let l:plugins = values(map(copy(self.processed_plugins), 'v:val.dir'))
   function! s:clean_filter(plugins, key, val)
     return index(a:plugins, a:val) < 0
   endfunction
@@ -104,10 +101,14 @@ function! s:packager.clean() abort
 endfunction
 
 function! s:packager.status() abort
+  if self.is_running()
+    echo 'Install/Update process still in progress. Please wait until it finishes to view the status.'
+    return
+  endif
   let l:result = []
   let self.processed_plugins = copy(self.plugins)
 
-  for l:plugin in self.processed_plugins
+  for l:plugin in values(self.processed_plugins)
     if !l:plugin.installed
       call add(l:result, packager#utils#status_error(l:plugin.name, 'Not installed.'))
       continue
@@ -131,7 +132,7 @@ function! s:packager.status() abort
 endfunction
 
 function! s:packager.quit()
-  if self.remaining_jobs > 0
+  if self.is_running()
     if !packager#utils#confirm('Installation is in progress. Are you sure you want to quit?')
       return
     endif
@@ -162,6 +163,7 @@ function! s:packager.run_post_update_hooks() abort
 
   if getbufvar(bufname('%'), '&filetype') ==? 'packager'
     setlocal nomodifiable
+    echo "Press 'D' to view latest updates."
   endif
 
   call self.update_remote_plugins_and_helptags()
@@ -203,6 +205,7 @@ function! s:packager.open_buffer() abort
   nnoremap <silent><buffer> <CR> :call g:packager.open_sha()<CR>
   nnoremap <silent><buffer> <C-j> :call g:packager.goto_plugin('next')<CR>
   nnoremap <silent><buffer> <C-k> :call g:packager.goto_plugin('previous')<CR>
+  nnoremap <silent><buffer> D :call g:packager.status()<CR>
 endfunction
 
 function! s:packager.open_sha() abort
@@ -225,13 +228,12 @@ function! s:packager.open_sha() abort
         \ ])
 
   call append(1, l:sha_content)
-  1delete _
   setlocal nomodifiable
   nnoremap <silent><buffer> q :q<CR>
 endfunction
 
 function! s:packager.find_plugin_by_sha(sha) abort
-  for l:plugin in self.processed_plugins
+  for l:plugin in values(self.processed_plugins)
     let l:commits = filter(copy(l:plugin.last_update), printf("v:val =~? '^%s'", a:sha))
     if len(l:commits) > 0
       return l:plugin
@@ -248,7 +250,7 @@ function! s:packager.goto_plugin(dir) abort
 endfunction
 
 function! s:packager.update_remote_plugins_and_helptags() abort
-  for l:plugin in self.processed_plugins
+  for l:plugin in values(self.processed_plugins)
     if l:plugin.updated
       silent! exe 'helptags' fnameescape(printf('%s/doc', l:plugin.dir))
 
@@ -272,6 +274,10 @@ function! s:packager.start_job(cmd, handler, plugin, ...) abort
   endif
 
   return packager#job#start(a:cmd, l:opts)
+endfunction
+
+function! s:packager.is_running() abort
+  return self.remaining_jobs > 0
 endfunction
 
 function! s:hook_stdout_handler(plugin, id, message, event) dict
