@@ -175,10 +175,25 @@ function! s:packager.run_post_update_hooks() abort
 endfunction
 
 function! s:packager.open_buffer() abort
-  "TODO Check if already opened and reuse
-  vertical topleft new
+  let l:is_current_packager = &filetype ==? 'packager'
+
+  if !l:is_current_packager
+    let l:packager_window_numbers = filter(range(1, winnr('$')), 'getwinvar(v:val, "&filetype") ==? "packager"')
+    if len(l:packager_window_numbers) > 0
+      silent! exe printf('%dwincmd w', l:packager_window_numbers[0])
+      let l:is_current_packager = 1
+    endif
+  endif
+
+  if l:is_current_packager
+    set modifiable
+    silent! exe 'norm!gg"_dG'
+  else
+    vertical topleft new
+  endif
+
   setf packager
-  setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell
+  setlocal modifiable buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell
   syntax clear
   syn match packagerCheck /^✓/
   syn match packagerPlus /^+/
