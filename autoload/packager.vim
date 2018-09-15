@@ -1,7 +1,8 @@
 let s:packager = {}
 let s:defaults = {
       \ 'dir': printf('%s/%s', split(&packpath, ',')[0], 'pack/packager'),
-      \ 'depth': 5
+      \ 'depth': 5,
+      \ 'jobs': 8,
       \ }
 
 function! packager#new(opts) abort
@@ -16,6 +17,7 @@ function! s:packager.new(opts) abort
   let l:instance.plugins = {}
   let l:instance.processed_plugins = {}
   let l:instance.remaining_jobs = 0
+  let l:instance.running_jobs = 0
   silent! call mkdir(printf('%s/%s', l:instance.dir, 'opt'), 'p')
   silent! call mkdir(printf('%s/%s', l:instance.dir, 'start'), 'p')
   return l:instance
@@ -40,7 +42,11 @@ function! s:packager.install(opts) abort
   call self.open_buffer()
   call self.update_top_status()
   for l:plugin in values(self.processed_plugins)
-    call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
+    call self.start_job(l:plugin.git_command(self.depth), {
+          \ 'handler': 's:stdout_handler',
+          \ 'plugin': l:plugin,
+          \ 'limit_jobs': 1
+          \ })
   endfor
 endfunction
 
@@ -59,7 +65,11 @@ function! s:packager.update(opts) abort
   call self.open_buffer()
   call self.update_top_status()
   for l:plugin in values(self.processed_plugins)
-    call self.start_job(l:plugin.git_command(self.depth), 's:stdout_handler', l:plugin)
+    call self.start_job(l:plugin.git_command(self.depth), {
+          \ 'handler': 's:stdout_handler',
+          \ 'plugin': l:plugin,
+          \ 'limit_jobs': 1
+          \ })
   endfor
 endfunction
 
@@ -151,6 +161,8 @@ endfunction
 function! s:packager.update_top_status_installed() abort
   let self.remaining_jobs -= 1
   let self.remaining_jobs = max([0, self.remaining_jobs]) "Make sure it's not negative
+  let self.running_jobs -= 1
+  let self.running_jobs = max([0, self.running_jobs]) "Make sure it's not negative
   return self.update_top_status()
 endfunction
 
@@ -163,7 +175,6 @@ function! s:packager.run_post_update_hooks() abort
 
   if getbufvar(bufname('%'), '&filetype') ==? 'packager'
     setlocal nomodifiable
-    echo "Press 'D' to view latest updates."
   endif
 
   call self.update_remote_plugins_and_helptags()
@@ -172,6 +183,8 @@ function! s:packager.run_post_update_hooks() abort
     silent! exe 'redraw'
     exe self.post_run_opts.on_finish
   endif
+
+  echo "Press 'D' to view latest updates."
 endfunction
 
 function! s:packager.open_buffer() abort
@@ -277,15 +290,25 @@ function! s:packager.update_remote_plugins_and_helptags() abort
   endfor
 endfunction
 
-function! s:packager.start_job(cmd, handler, plugin, ...) abort
+function! s:packager.start_job(cmd, opts) abort
+  if has_key(a:opts, 'limit_jobs') && self.jobs > 0
+    if self.running_jobs > self.jobs
+      while self.running_jobs > self.jobs
+        silent exe 'redraw'
+        sleep 100m
+      endwhile
+    endif
+    let self.running_jobs += 1
+  endif
+
   let l:opts = {
-        \ 'on_stdout': function(a:handler, [a:plugin], self),
-        \ 'on_stderr': function(a:handler, [a:plugin], self),
-        \ 'on_exit': function(a:handler, [a:plugin], self)
+        \ 'on_stdout': function(a:opts.handler, [a:opts.plugin], self),
+        \ 'on_stderr': function(a:opts.handler, [a:opts.plugin], self),
+        \ 'on_exit': function(a:opts.handler, [a:opts.plugin], self)
         \ }
 
-  if a:0 > 0
-    let l:opts.cwd = a:1
+  if has_key(a:opts, 'cwd')
+    let l:opts.cwd = a:opts.cwd
   endif
 
   return packager#job#start(a:cmd, l:opts)
@@ -295,16 +318,35 @@ function! s:packager.is_running() abort
   return self.remaining_jobs > 0
 endfunction
 
+function! s:packager.get_last_non_empty_msg(messages) abort
+  if type(a:messages) ==? type([])
+    for l:message in reverse(copy(a:messages))
+      let l:trimmed = packager#utils#trim(l:message)
+      if !empty(l:trimmed)
+        return l:trimmed
+      endif
+    endfor
+  endif
+
+  return ''
+endfunction
+
 function! s:hook_stdout_handler(plugin, id, message, event) dict
+  let l:last_msg = self.get_last_non_empty_msg(a:message)
+  if !empty(l:last_msg)
+    let a:plugin.last_non_empty_hook_msg = l:last_msg
+  endif
+
   if a:event !=? 'exit'
     let l:msg = get(split(a:message[0], '\r'), -1, a:message[0])
     return a:plugin.update_status('ok', l:msg)
   endif
 
   call self.update_top_status_installed()
-  "TODO: Add better message
   if a:message !=? 0
-    call a:plugin.update_status('error', printf('Error on hook - status %s', a:message))
+    let l:err_msg = has_key(a:plugin, 'last_non_empty_hook_msg')
+          \ ? printf(' - %s', a:plugin.last_non_empty_hook_msg) : ''
+    call a:plugin.update_status('error', printf('Error on hook (exit status %d)%s', a:message, l:err_msg))
   else
     call a:plugin.update_status('ok', 'Finished running post update hook!')
   endif
@@ -315,14 +357,24 @@ function! s:hook_stdout_handler(plugin, id, message, event) dict
 endfunction
 
 function! s:stdout_handler(plugin, id, message, event) dict
+  let l:last_msg = self.get_last_non_empty_msg(a:message)
+  if !empty(l:last_msg)
+    let a:plugin.last_non_empty_msg = l:last_msg
+  endif
+
   if a:event !=? 'exit'
     let l:msg = get(split(a:message[0], '\r'), -1, a:message[0])
+    if !empty(l:msg)
+      let a:plugin.last_non_empty_msg = l:msg
+    endif
     return a:plugin.update_status('progress', l:msg)
   endif
 
   if a:message !=? 0
     call self.update_top_status_installed()
-    return a:plugin.update_status('error', printf('Error - status code %d', a:message))
+    let l:err_msg = has_key(a:plugin, 'last_non_empty_msg')
+          \ ? printf(' - %s', a:plugin.last_non_empty_msg) : ''
+    call a:plugin.update_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
   endif
 
   call a:plugin.update_install_status()
@@ -338,7 +390,11 @@ function! s:stdout_handler(plugin, id, message, event) dict
       endtry
       call self.update_top_status_installed()
     else
-      call self.start_job(a:plugin.do, 's:hook_stdout_handler', a:plugin, a:plugin.dir)
+      call self.start_job(a:plugin.do, {
+            \ 'handler': 's:hook_stdout_handler',
+            \ 'plugin': a:plugin,
+            \ 'cwd': a:plugin.dir
+            \ })
     endif
   else
     call self.update_top_status_installed()

@@ -48,3 +48,7 @@ function! packager#utils#add_rtp(path) abort
     let &rtp .= printf(',%s', a:path)
   endif
 endfunction
+
+function! packager#utils#trim(str) abort
+  return substitute(a:str, '^\s*\(.\{-}\)\s*$', '\1', '')
+endfunction
