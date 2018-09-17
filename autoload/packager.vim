@@ -10,6 +10,7 @@ function! packager#new(opts) abort
 endfunction
 
 function! s:packager.new(opts) abort
+  call packager#utils#check_support()
   let l:instance = extend(copy(self), extend(copy(a:opts), s:defaults, 'keep'))
   if has_key(a:opts, 'dir')
     let l:instance.dir = substitute(fnamemodify(a:opts.dir, ':p'), '\/$', '', '')

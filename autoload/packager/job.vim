@@ -125,7 +125,8 @@ function! s:job_start(cmd, opts) abort
     endif
 
     if l:jobtype == s:job_type_nvimjob
-        let l:job = jobstart(a:cmd, {
+      let l:cmd = type(a:cmd) ==? type([]) ? join(' ') : a:cmd
+        let l:job = jobstart(l:cmd, {
             \ 'on_stdout': function('s:on_stdout'),
             \ 'on_stderr': function('s:on_stderr'),
             \ 'on_exit': function('s:on_exit'),
@@ -143,7 +144,9 @@ function! s:job_start(cmd, opts) abort
     elseif l:jobtype == s:job_type_vimjob
         let s:jobidseq = s:jobidseq + 1
         let l:jobid = s:jobidseq
-        let l:job  = job_start(a:cmd, {
+
+        let l:cmd = type(a:cmd) ==? type([]) ? join(a:cmd, ' ') : a:cmd
+        let l:job  = job_start(printf('%s %s "%s"', &shell, &shellcmdflag, l:cmd), {
             \ 'out_cb': function('s:out_cb', [l:jobid, a:opts]),
             \ 'err_cb': function('s:err_cb', [l:jobid, a:opts]),
             \ 'exit_cb': function('s:exit_cb', [l:jobid, a:opts]),

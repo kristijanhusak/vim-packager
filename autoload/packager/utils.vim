@@ -42,13 +42,23 @@ function! packager#utils#confirm(question) abort
 endfunction
 
 function! packager#utils#add_rtp(path) abort
-  if empty(&rtp)
-    let &rtp = a:path
+  if empty(&runtimepath)
+    let &runtimepath = a:path
   else
-    let &rtp .= printf(',%s', a:path)
+    let &runtimepath .= printf(',%s', a:path)
   endif
 endfunction
 
 function! packager#utils#trim(str) abort
   return substitute(a:str, '^\s*\(.\{-}\)\s*$', '\1', '')
+endfunction
+
+function! packager#utils#check_support() abort
+  if !has('packages')
+    throw '"packages" feature not supported by this version of (Neo)Vim.'
+  endif
+
+  if !has('nvim') && !has('job')
+    throw '"jobs" feature not supported by this version of (Neo)Vim.'
+  endif
 endfunction
