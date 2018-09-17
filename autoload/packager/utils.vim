@@ -1,13 +1,5 @@
 function! packager#utils#system(cmds) abort
-  let l:prev = [&shell, &shellcmdflag, &shellredir]
-  if has('win32')
-    set shell=cmd.exe shellcmdflag=/c shellredir=>%s\ 2>&1
-  else
-    set shell=sh shellredir=>%s\ 2>&1
-  endif
-  let l:result = systemlist(join(a:cmds, ' '))
-  let [&shell, &shellcmdflag, &shellredir] = l:prev
-  return l:result
+  return systemlist(join(a:cmds, ' '))
 endfunction
 
 function! packager#utils#status_ok(name, status_text)
