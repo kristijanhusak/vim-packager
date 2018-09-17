@@ -1,4 +1,5 @@
 let s:plugin = {}
+let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = { 'name': '', 'type': 'start', 'branch': '', 'commit': '', 'tag': '',
       \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'last_update': [], 'frozen': 0 }
 
@@ -10,7 +11,7 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance = extend(copy(self), extend(copy(get(a:opts, 0, {})), s:defaults, 'keep'))
   let l:instance.packager = a:packager
   let l:instance.name = !empty(l:instance.name) ? l:instance.name : split(a:name, '/')[-1]
-  let l:instance.dir = printf('%s/%s/%s', a:packager.dir, l:instance.type, l:instance.name)
+  let l:instance.dir = printf('%s%s%s%s%s', a:packager.dir, s:slash, l:instance.type, s:slash, l:instance.name)
   let l:instance.url = a:name =~? '^http.*' ? a:name : printf('https://github.com/%s', a:name)
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1

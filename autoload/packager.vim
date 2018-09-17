@@ -1,6 +1,7 @@
 let s:packager = {}
+let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = {
-      \ 'dir': printf('%s/%s', split(&packpath, ',')[0], 'pack/packager'),
+      \ 'dir': printf('%s%s%s', split(&packpath, ',')[0], s:slash, 'pack'.s:slash.'packager'),
       \ 'depth': 5,
       \ 'jobs': 8,
       \ }
@@ -13,14 +14,14 @@ function! s:packager.new(opts) abort
   call packager#utils#check_support()
   let l:instance = extend(copy(self), extend(copy(a:opts), s:defaults, 'keep'))
   if has_key(a:opts, 'dir')
-    let l:instance.dir = substitute(fnamemodify(a:opts.dir, ':p'), '\/$', '', '')
+    let l:instance.dir = substitute(fnamemodify(a:opts.dir, ':p'), '\'.s:slash.'$', '', '')
   endif
   let l:instance.plugins = {}
   let l:instance.processed_plugins = {}
   let l:instance.remaining_jobs = 0
   let l:instance.running_jobs = 0
-  silent! call mkdir(printf('%s/%s', l:instance.dir, 'opt'), 'p')
-  silent! call mkdir(printf('%s/%s', l:instance.dir, 'start'), 'p')
+  silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'opt'), 'p')
+  silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'start'), 'p')
   return l:instance
 endfunction
 
@@ -75,9 +76,9 @@ function! s:packager.update(opts) abort
 endfunction
 
 function! s:packager.clean() abort
-  let l:folders = glob(printf('%s/*/*', self.dir), 0, 1)
+  let l:folders = glob(printf('%s%s*%s*', self.dir, s:slash, s:slash), 0, 1)
   let self.processed_plugins = copy(self.plugins)
-  let l:plugins = values(map(copy(self.processed_plugins), 'v:val.dir'))
+  let l:plugins = values(map(copy(self.processed_plugins), 'substitute(v:val.dir, ''\(\\\|\/\)'', s:slash, ''g'')'))
   function! s:clean_filter(plugins, key, val)
     return index(a:plugins, a:val) < 0
   endfunction
@@ -102,7 +103,7 @@ function! s:packager.clean() abort
   endif
 
   for l:item in l:to_clean
-    let l:line = search(printf('^+\s%s', l:item), 'n')
+    let l:line = search(printf('^+\s%s', escape(l:item, '/\')), 'n')
     if delete(l:item, 'rf') !=? 0
       call setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
     else
@@ -281,9 +282,9 @@ endfunction
 function! s:packager.update_remote_plugins_and_helptags() abort
   for l:plugin in values(self.processed_plugins)
     if l:plugin.updated
-      silent! exe 'helptags' fnameescape(printf('%s/doc', l:plugin.dir))
+      silent! exe 'helptags' fnameescape(printf('%s%sdoc', l:plugin.dir, s:slash))
 
-      if has('nvim') && isdirectory(printf('%s/rplugin', l:plugin.dir))
+      if has('nvim') && isdirectory(printf('%s%srplugin', l:plugin.dir, s:slash))
         call packager#utils#add_rtp(l:plugin.dir)
         exe 'UpdateRemotePlugins'
       endif
