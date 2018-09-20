@@ -140,7 +140,7 @@ function! s:packager.status() abort
   call setline(1, 'Plugin status.')
   call setline(2, '')
   call append(2, l:result)
-  set nomodifiable
+  setlocal nomodifiable
 endfunction
 
 function! s:packager.quit()
