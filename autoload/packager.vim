@@ -47,7 +47,7 @@ function! s:packager.install(opts) abort
     call self.start_job(l:plugin.git_command(self.depth), {
           \ 'handler': 's:stdout_handler',
           \ 'plugin': l:plugin,
-          \ 'limit_jobs': 1
+          \ 'limit_jobs': v:true
           \ })
   endfor
 endfunction
@@ -70,7 +70,7 @@ function! s:packager.update(opts) abort
     call self.start_job(l:plugin.git_command(self.depth), {
           \ 'handler': 's:stdout_handler',
           \ 'plugin': l:plugin,
-          \ 'limit_jobs': 1
+          \ 'limit_jobs': v:true
           \ })
   endfor
 endfunction

@@ -50,6 +50,8 @@ function! PackagerInit() abort
   call packager#add('Shougo/deoplete.nvim')
   call packager#add('autozimu/LanguageClient-neovim', { 'do': 'bash install.sh' })
   call packager#add('morhetz/gruvbox')
+  "Git submodules example
+  call packager#add('Valloric/YouCompleteMe', { 'do': 'git submodule update --init --recursive --progress && ./install.py'})
 endfunction
 
 command! PackagerInstall call PackagerInit() | call packager#install()
