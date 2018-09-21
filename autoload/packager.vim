@@ -103,7 +103,7 @@ function! s:packager.clean() abort
   endif
 
   for l:item in l:to_clean
-    let l:line = search(printf('^+\s%s', escape(l:item, '/\')), 'n')
+    let l:line = search(printf('^+\s%s\s—', escape(l:item, '/\')), 'n')
     if delete(l:item, 'rf') !=? 0
       call setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
     else
@@ -341,7 +341,7 @@ function! s:hook_stdout_handler(plugin, id, message, event) dict
 
   if a:event !=? 'exit'
     let l:msg = get(split(a:message[0], '\r'), -1, a:message[0])
-    return a:plugin.update_status('ok', l:msg)
+    return a:plugin.update_status('progress', l:msg)
   endif
 
   call self.update_top_status_installed()
@@ -379,10 +379,10 @@ function! s:stdout_handler(plugin, id, message, event) dict
     call a:plugin.update_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
   endif
 
-  call a:plugin.update_install_status()
+  let l:status_text = a:plugin.update_install_status()
 
   if a:plugin.updated && !empty(a:plugin.do)
-    call a:plugin.update_status('ok', 'Running post update hooks...')
+    call a:plugin.update_status('progress', 'Running post update hooks...')
     if a:plugin.do[0] ==? ':'
       try
         exe a:plugin.do[1:]
@@ -399,6 +399,7 @@ function! s:stdout_handler(plugin, id, message, event) dict
             \ })
     endif
   else
+    call a:plugin.update_status('ok', l:status_text)
     call self.update_top_status_installed()
   endif
 

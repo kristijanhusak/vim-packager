@@ -101,14 +101,14 @@ function! s:plugin.update_install_status() abort
   if !self.installed
     let self.installed = 1
     let self.updated = 1
-    return self.update_status('ok', 'Installed!')
+    return 'Installed!'
   endif
 
   if self.has_updates()
     let self.updated = 1
     let self.last_update = self.get_last_update()
-    return self.update_status('ok', 'Updated!')
+    return 'Updated!'
   endif
 
-  return self.update_status('ok', 'Already up to date.')
+  return 'Already up to date.'
 endfunction
