@@ -376,7 +376,7 @@ function! s:stdout_handler(plugin, id, message, event) dict
     call self.update_top_status_installed()
     let l:err_msg = has_key(a:plugin, 'last_non_empty_msg')
           \ ? printf(' - %s', a:plugin.last_non_empty_msg) : ''
-    call a:plugin.update_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
+    return a:plugin.update_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
   endif
 
   let l:status_text = a:plugin.update_install_status()
