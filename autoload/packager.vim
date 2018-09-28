@@ -119,27 +119,30 @@ function! s:packager.status() abort
   endif
   let l:result = []
   let self.processed_plugins = copy(self.plugins)
+  let l:has_errors = 0
 
   for l:plugin in values(self.processed_plugins)
-    if !l:plugin.installed
-      call add(l:result, packager#utils#status_error(l:plugin.name, 'Not installed.'))
-      continue
-    endif
-    if empty(l:plugin.last_update)
-      call add(l:result, packager#utils#status_ok(l:plugin.name, 'OK.'))
-      continue
-    endif
+    let l:plugin_status = l:plugin.get_content_for_status()
 
-    call add(l:result, packager#utils#status_ok(l:plugin.name, 'Updated.'))
-    for l:update in l:plugin.last_update
-      call add(l:result, printf('  * %s', l:update))
+    for l:status_line in l:plugin_status
+      call add(l:result, l:status_line)
     endfor
+
+    if !l:plugin.installed || l:plugin.update_failed || l:plugin.hook_failed
+      let l:has_errors = 1
+    endif
   endfor
 
   call self.open_buffer()
   call setline(1, 'Plugin status.')
   call setline(2, '')
   call append(2, l:result)
+
+  call append('$', '')
+  call append('$', "Press 'Enter' on commit lines to preview the commit.")
+  if l:has_errors
+    call append('$', "Press 'E' on errored plugins to view stdout.")
+  endif
   setlocal nomodifiable
 endfunction
 
@@ -176,6 +179,9 @@ function! s:packager.run_post_update_hooks() abort
   let self.post_run_hooks_called = 1
 
   if getbufvar(bufname('%'), '&filetype') ==? 'packager'
+    call append('$', '')
+    call append('$', "Press 'D' to view latest updates.")
+    call append('$', "Press 'E' on a plugin line to see stdout in preview window.")
     setlocal nomodifiable
   endif
 
@@ -185,8 +191,6 @@ function! s:packager.run_post_update_hooks() abort
     silent! exe 'redraw'
     exe self.post_run_opts.on_finish
   endif
-
-  echo "Press 'D' to view latest updates."
 endfunction
 
 function! s:packager.open_buffer() abort
@@ -233,6 +237,7 @@ function! s:packager.open_buffer() abort
   hi def link packagerRelDate        Comment
   nnoremap <silent><buffer> q :call g:packager.quit()<CR>
   nnoremap <silent><buffer> <CR> :call g:packager.open_sha()<CR>
+  nnoremap <silent><buffer> E :call g:packager.open_stdout()<CR>
   nnoremap <silent><buffer> <C-j> :call g:packager.goto_plugin('next')<CR>
   nnoremap <silent><buffer> <C-k> :call g:packager.goto_plugin('previous')<CR>
   nnoremap <silent><buffer> D :call g:packager.status()<CR>
@@ -257,7 +262,29 @@ function! s:packager.open_sha() abort
         \ '--no-color', '--pretty=medium', l:sha
         \ ])
 
-  call append(1, l:sha_content)
+  call append(0, l:sha_content)
+  setlocal nomodifiable
+  nnoremap <silent><buffer> q :q<CR>
+endfunction
+
+function! s:packager.open_stdout(...) abort
+  let l:is_hook = a:0 > 0
+  let l:plugin_name = packager#utils#trim(matchstr(getline('.'), '^.\s\zs[^—]*\ze'))
+  if !has_key(self.plugins, l:plugin_name)
+    return
+  endif
+
+  let l:content = self.plugins[l:plugin_name].get_stdout_messages()
+  if empty(l:content)
+    echo 'No stdout content to show.'
+    return
+  endif
+
+  silent exe 'pedit' l:plugin_name
+  wincmd p
+  setlocal previewwindow filetype=sh buftype=nofile nobuflisted modifiable
+  silent! exe 'norm!gg"_dG'
+  call append(0, l:content)
   setlocal nomodifiable
   nnoremap <silent><buffer> q :q<CR>
 endfunction
@@ -320,62 +347,18 @@ function! s:packager.is_running() abort
   return self.remaining_jobs > 0
 endfunction
 
-function! s:packager.get_last_non_empty_msg(messages) abort
-  if type(a:messages) ==? type([])
-    for l:message in reverse(copy(a:messages))
-      let l:trimmed = packager#utils#trim(l:message)
-      if !empty(l:trimmed)
-        return l:trimmed
-      endif
-    endfor
-  endif
-
-  return ''
-endfunction
-
-function! s:hook_stdout_handler(plugin, id, message, event) dict
-  let l:last_msg = self.get_last_non_empty_msg(a:message)
-  if !empty(l:last_msg)
-    let a:plugin.last_non_empty_hook_msg = l:last_msg
-  endif
-
-  if a:event !=? 'exit'
-    let l:msg = get(split(a:message[0], '\r'), -1, a:message[0])
-    return a:plugin.update_status('progress', l:msg)
-  endif
-
-  call self.update_top_status_installed()
-  if a:message !=? 0
-    let l:err_msg = has_key(a:plugin, 'last_non_empty_hook_msg')
-          \ ? printf(' - %s', a:plugin.last_non_empty_hook_msg) : ''
-    call a:plugin.update_status('error', printf('Error on hook (exit status %d)%s', a:message, l:err_msg))
-  else
-    call a:plugin.update_status('ok', 'Finished running post update hook!')
-  endif
-
-  if self.remaining_jobs <=? 0
-    call self.run_post_update_hooks()
-  endif
-endfunction
-
 function! s:stdout_handler(plugin, id, message, event) dict
-  let l:last_msg = self.get_last_non_empty_msg(a:message)
-  if !empty(l:last_msg)
-    let a:plugin.last_non_empty_msg = l:last_msg
-  endif
+  call a:plugin.log_event_messages(a:event, a:message)
 
   if a:event !=? 'exit'
-    let l:msg = get(split(a:message[0], '\r'), -1, a:message[0])
-    if !empty(l:msg)
-      let a:plugin.last_non_empty_msg = l:msg
-    endif
-    return a:plugin.update_status('progress', l:msg)
+    return a:plugin.update_status('progress', a:plugin.get_last_progress_message())
   endif
 
   if a:message !=? 0
     call self.update_top_status_installed()
-    let l:err_msg = has_key(a:plugin, 'last_non_empty_msg')
-          \ ? printf(' - %s', a:plugin.last_non_empty_msg) : ''
+    let a:plugin.update_failed = 1
+    let l:err_msg = a:plugin.get_short_error_message()
+    let l:err_msg = !empty(l:err_msg) ? printf(' - %s', l:err_msg) : ''
     return a:plugin.update_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
   endif
 
@@ -401,6 +384,28 @@ function! s:stdout_handler(plugin, id, message, event) dict
   else
     call a:plugin.update_status('ok', l:status_text)
     call self.update_top_status_installed()
+  endif
+
+  if self.remaining_jobs <=? 0
+    call self.run_post_update_hooks()
+  endif
+endfunction
+
+function! s:hook_stdout_handler(plugin, id, message, event) dict
+  call a:plugin.log_event_messages(a:event, a:message, 'hook')
+
+  if a:event !=? 'exit'
+    return a:plugin.update_status('progress', a:plugin.get_last_progress_message('hook'))
+  endif
+
+  call self.update_top_status_installed()
+  if a:message !=? 0
+    let l:err_msg = a:plugin.get_short_error_message('hook')
+    let l:err_msg = !empty(l:err_msg) ? printf(' - %s', l:err_msg) : ''
+    let a:plugin.hook_failed = 1
+    call a:plugin.update_status('error', printf('Error on hook (exit status %d)%s', a:message, l:err_msg))
+  else
+    call a:plugin.update_status('ok', 'Finished running post update hook!')
   endif
 
   if self.remaining_jobs <=? 0

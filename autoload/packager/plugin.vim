@@ -1,7 +1,7 @@
 let s:plugin = {}
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = { 'name': '', 'type': 'start', 'branch': '', 'commit': '', 'tag': '',
-      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'last_update': [], 'frozen': 0 }
+      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'frozen': 0 }
 
 function! packager#plugin#new(name, opts, packager) abort
   return s:plugin.new(a:name, a:opts, a:packager)
@@ -13,6 +13,11 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.name = !empty(l:instance.name) ? l:instance.name : split(a:name, '/')[-1]
   let l:instance.dir = printf('%s%s%s%s%s', a:packager.dir, s:slash, l:instance.type, s:slash, l:instance.name)
   let l:instance.url = a:name =~? '^http.*' ? a:name : printf('https://github.com/%s', a:name)
+  let l:instance.event_messages = []
+  let l:instance.hook_event_messages = []
+  let l:instance.update_failed = 0
+  let l:instance.hook_failed = 0
+  let l:instance.last_update = []
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
     let l:instance.rev = l:instance.revision()
@@ -111,4 +116,92 @@ function! s:plugin.update_install_status() abort
   endif
 
   return 'Already up to date.'
+endfunction
+
+function s:plugin.get_message_key(is_hook) abort
+  if a:is_hook
+    return 'hook_event_messages'
+  endif
+
+  return 'event_messages'
+endfunction
+
+function! s:plugin.log_event_messages(event, messages, ...) abort
+  if a:event ==? 'exit'
+    return 0
+  endif
+  let l:key = self.get_message_key(a:0 > 0)
+
+  if type(a:messages) ==? type([])
+    for l:message in a:messages
+      if !empty(packager#utils#trim(l:message)) && index(self[l:key], l:message) < 0
+        call add(self[l:key], l:message)
+      endif
+    endfor
+  endif
+
+  if type(a:messages) ==? type('') && index(self[l:key], a:messages) < 0
+    call add(self[l:key], a:messages)
+  endif
+endfunction
+
+function! s:plugin.get_last_progress_message(...) abort
+  let l:key = self.get_message_key(a:0 > 0)
+  let l:last_msg = get(self[l:key], -1, '')
+  return get(split(l:last_msg, '\r'), -1, l:last_msg)
+endfunction
+
+function! s:plugin.get_short_error_message(...) abort
+  let l:is_hook = a:0 > 0
+  let l:key = self.get_message_key(l:is_hook)
+  return packager#utils#trim(get(self[l:key], -1, ''))
+endfunction
+
+function! s:plugin.get_stdout_messages() abort
+  let l:result = []
+  let l:key = self.get_message_key(self.hook_failed)
+
+  for l:message in self[l:key]
+    let l:split_message = split(l:message, '\r')
+    for l:msg in l:split_message
+      if !empty(packager#utils#trim(l:msg))
+        call add(l:result, l:msg)
+      endif
+    endfor
+  endfor
+
+  return l:result
+endfunction
+
+function! s:plugin.get_content_for_status() abort
+  if !self.installed
+    let l:err_msg = self.get_short_error_message()
+    let l:last_err_line = !empty(l:err_msg) ? ' Last line of error message:' : ''
+    let l:status = printf('Not installed.%s', l:last_err_line)
+    let l:result = [packager#utils#status_error(self.name, l:status)]
+    if !empty(l:err_msg)
+      call add(l:result, printf('  * %s', l:err_msg))
+    endif
+    return l:result
+  endif
+
+  if self.update_failed
+    return [packager#utils#status_error(self.name, 'Install/update failed. Last line of error message:'),
+          \ printf('  * %s', self.get_short_error_message())]
+  endif
+
+  if self.hook_failed
+    return [packager#utils#status_error(self.name, 'Post hook failed. Last line of error message:'),
+          \ printf('  * %s', self.get_short_error_message('hook'))]
+  endif
+
+  if empty(self.last_update)
+    return [packager#utils#status_ok(self.name, 'OK.')]
+  endif
+
+  let l:result = [packager#utils#status_ok(self.name, 'Updated.')]
+  for l:update in self.last_update
+    call add(l:result, printf('  * %s', l:update))
+  endfor
+  return l:result
 endfunction
