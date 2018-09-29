@@ -143,6 +143,7 @@ function! s:packager.status() abort
   if l:has_errors
     call append('$', "Press 'E' on errored plugins to view stdout.")
   endif
+  call append('$', "Press 'q' to quit this buffer.")
   setlocal nomodifiable
 endfunction
 
@@ -182,6 +183,7 @@ function! s:packager.run_post_update_hooks() abort
     call append('$', '')
     call append('$', "Press 'D' to view latest updates.")
     call append('$', "Press 'E' on a plugin line to see stdout in preview window.")
+    call append('$', "Press 'q' to quit this buffer.")
     setlocal nomodifiable
   endif
 

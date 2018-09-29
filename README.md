@@ -147,6 +147,10 @@ Each plugin can have several states:
 * `OK` - Plugin is properly installed and it doesn't have any update information.
 * `Updated` - Plugin has some information about the last update.
 
+#### packager#clean()
+
+This removes unused plugins. It will ask for confirmation before proceeding.
+
 ## Thanks to:
 
 * [@k-takata](https://github.com/k-takata) and his [minpac](https://github.com/k-takata/minpac) plugin for inspiration and parts of the code
