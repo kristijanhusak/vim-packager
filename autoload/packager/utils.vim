@@ -1,5 +1,8 @@
 function! packager#utils#system(cmds) abort
-  return systemlist(join(a:cmds, ' '))
+  let l:save_shell = packager#utils#set_shell()
+  let l:cmd_output = systemlist(join(a:cmds, ' '))
+  call packager#utils#restore_shell(l:save_shell)
+  return l:cmd_output
 endfunction
 
 function! packager#utils#status_ok(name, status_text)
@@ -53,4 +56,20 @@ function! packager#utils#check_support() abort
   if !has('nvim') && !has('job')
     throw '"jobs" feature not supported by this version of (Neo)Vim.'
   endif
+endfunction
+
+function! packager#utils#set_shell() abort
+  let l:save_shell = [&shell, &shellcmdflag, &shellredir]
+
+  if has('win32')
+    set shell=cmd.exe shellcmdflag=/c shellredir=>%s\ 2>&1
+  else
+    set shell=sh shellredir=>%s\ 2>&1
+  endif
+
+  return l:save_shell
+endfunction
+
+function! packager#utils#restore_shell(saved_shell) abort
+  let [&shell, &shellcmdflag, &shellredir] = a:saved_shell
 endfunction

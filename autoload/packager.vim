@@ -342,7 +342,11 @@ function! s:packager.start_job(cmd, opts) abort
     let l:opts.cwd = a:opts.cwd
   endif
 
-  return packager#job#start(a:cmd, l:opts)
+  let l:save_shell = packager#utils#set_shell()
+  let l:job = packager#job#start(a:cmd, l:opts)
+  call packager#utils#restore_shell(l:save_shell)
+
+  return l:job
 endfunction
 
 function! s:packager.is_running() abort
