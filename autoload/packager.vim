@@ -371,6 +371,7 @@ function! s:stdout_handler(plugin, id, message, event) dict
   let l:status_text = a:plugin.update_install_status()
 
   if a:plugin.updated && !empty(a:plugin.do)
+    call packager#utils#load_plugin(a:plugin)
     call a:plugin.update_status('progress', 'Running post update hooks...')
     if a:plugin.do[0] ==? ':'
       try

@@ -73,3 +73,13 @@ endfunction
 function! packager#utils#restore_shell(saved_shell) abort
   let [&shell, &shellcmdflag, &shellredir] = a:saved_shell
 endfunction
+
+function! packager#utils#load_plugin(plugin) abort
+  call packager#utils#add_rtp(a:plugin.dir)
+  for l:path in ['plugin/**/*.vim', 'after/plugin/**/*.vim']
+    let l:full_path = printf('%s/%s', a:plugin.dir, l:path)
+    if !empty(glob(l:full_path))
+      silent exe 'source '.l:full_path
+    endif
+  endfor
+endfunction
