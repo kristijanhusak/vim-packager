@@ -98,12 +98,24 @@ function! s:packager.clean() abort
     call append(2, packager#utils#status_progress(l:item, 'Waiting for confirmation...'))
   endfor
 
-  if !packager#utils#confirm('Remove above folder(s)?')
+  "Reverse list so the item gets deleted from top to bottom
+  call reverse(l:to_clean)
+
+  let l:option = packager#utils#confirm_with_options('Remove above folder(s)?', "&Yes\n&No\n&Ask for each folder")
+  if l:option ==? 2
     return self.quit()
   endif
 
   for l:item in l:to_clean
     let l:line = search(printf('^+\s%s\s—', escape(l:item, '/\')), 'n')
+    if l:option ==? 3
+      let l:confirm_delete = packager#utils#confirm(printf('Remove %s ?', l:item))
+      if !l:confirm_delete
+        call setline(l:line, packager#utils#status_ok(l:item, 'Skipped.'))
+        continue
+      endif
+    endif
+
     if delete(l:item, 'rf') !=? 0
       call setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
     else

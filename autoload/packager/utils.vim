@@ -27,10 +27,15 @@ function! packager#utils#status(icon, name, status_text) abort
 endfunction
 
 function! packager#utils#confirm(question) abort
+  let l:confirm = packager#utils#confirm_with_options(a:question, "&Yes\nNo")
+  return l:confirm ==? 1
+endfunction
+
+function! packager#utils#confirm_with_options(question, options) abort
   silent! exe 'redraw'
   try
-    let l:confirm = confirm(a:question, "&Yes\n&No")
-    return l:confirm ==? 1
+    let l:option = confirm(a:question, a:options)
+    return l:option
   catch
     return 0
   endtry

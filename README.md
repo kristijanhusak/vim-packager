@@ -148,6 +148,8 @@ Each plugin can have several states:
 #### packager#clean()
 
 This removes unused plugins. It will ask for confirmation before proceeding.
+Confirmation allows selecting option to delete all folders from the list (default action),
+or ask for each folder if you want to delete it.
 
 ## Thanks to:
 
