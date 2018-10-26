@@ -5,7 +5,7 @@
 This is Yet Another plugin manager for Vim/Neovim. It's written in pure vimscript and utilizes [jobs](https://neovim.io/doc/user/job_control.html) and [pack](https://neovim.io/doc/user/repeat.html#packages) features.
 
 Tested with:
-* Neovim 0.3.2 - Linux and Windows 10
+* Neovim 0.3.2 - Linux, MacOS and Windows 10
 * Vim 8.0 - Linux and Windows 10
 
 It's still in testing phase. Any feedback is appreciated.
@@ -60,8 +60,6 @@ function! PackagerInit() abort
   call packager#add('Shougo/deoplete.nvim')
   call packager#add('autozimu/LanguageClient-neovim', { 'do': 'bash install.sh' })
   call packager#add('morhetz/gruvbox')
-  "Git submodules example
-  call packager#add('Valloric/YouCompleteMe', { 'do': 'git submodule update --init --recursive --progress && ./install.py'})
 endfunction
 
 command! PackagerInstall call PackagerInit() | call packager#install()
