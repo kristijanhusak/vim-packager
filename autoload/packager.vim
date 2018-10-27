@@ -169,13 +169,18 @@ function! s:packager.quit()
 endfunction
 
 function! s:packager.update_top_status() abort
+  let l:bar_length = 50
   let l:total = len(self.processed_plugins)
   let l:installed = l:total - self.remaining_jobs
-  let l:progress_bar = printf('[%s%s]', repeat('=', l:installed), repeat('-', self.remaining_jobs))
+
+  let l:bar_installed = float2nr(floor(str2float(l:bar_length) / str2float(l:total) * str2float(l:installed)))
+  let l:bar_left = l:bar_length - l:bar_installed
+  let l:bar = printf('[%s%s]', repeat('=', l:bar_installed), repeat('-', l:bar_left))
+
   let l:install_text = self.remaining_jobs > 0 ? 'Installing' : 'Installed'
   let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished!'
   call setline(1, printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished))
-  call setline(2, l:progress_bar)
+  call setline(2, l:bar)
   return setline(3, '')
 endfunction
 
