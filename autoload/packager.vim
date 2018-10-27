@@ -171,9 +171,12 @@ endfunction
 function! s:packager.update_top_status() abort
   let l:total = len(self.processed_plugins)
   let l:installed = l:total - self.remaining_jobs
+  let l:progress_bar = printf('[%s%s]', repeat('=', l:installed), repeat('-', self.remaining_jobs))
+  let l:install_text = self.remaining_jobs > 0 ? 'Installing' : 'Installed'
   let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished!'
-  call setline(1, printf('Installed plugins %d / %d%s', l:installed, l:total, l:finished))
-  return setline(2, '')
+  call setline(1, printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished))
+  call setline(2, l:progress_bar)
+  return setline(3, '')
 endfunction
 
 function! s:packager.update_top_status_installed() abort
@@ -238,6 +241,7 @@ function! s:packager.open_buffer() abort
   syn match packagerStatusCommit /\(^\*.*—\)\@<=\s.*$/
   syn match packagerSha /\(\*\s\)\@<=[0-9a-f]\{4,}/
   syn match packagerRelDate /([^)]*)$/
+  syn match packagerProgress /\(\[\)\@<=[\=]*/
 
   hi def link packagerPlus           Special
   hi def link packagerCheck          Function
@@ -249,6 +253,7 @@ function! s:packager.open_buffer() abort
   hi def link packagerStatusError    WarningMsg
   hi def link packagerSha            Identifier
   hi def link packagerRelDate        Comment
+  hi def link packagerProgress       Boolean
   nnoremap <silent><buffer> q :call g:packager.quit()<CR>
   nnoremap <silent><buffer> <CR> :call g:packager.open_sha()<CR>
   nnoremap <silent><buffer> E :call g:packager.open_stdout()<CR>

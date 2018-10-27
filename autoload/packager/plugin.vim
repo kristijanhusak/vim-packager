@@ -37,7 +37,7 @@ function! s:plugin.update_status(status, text) abort
     return setline(self.line, packager#utils#status(a:status, self.name, a:text))
   endif
 
-  return append(2, packager#utils#status(a:status, self.name, a:text))
+  return append(3, packager#utils#status(a:status, self.name, a:text))
 endfunction
 
 function! s:plugin.update_git_command() abort
