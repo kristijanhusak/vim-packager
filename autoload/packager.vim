@@ -4,6 +4,7 @@ let s:defaults = {
       \ 'dir': printf('%s%s%s', split(&packpath, ',')[0], s:slash, 'pack'.s:slash.'packager'),
       \ 'depth': 5,
       \ 'jobs': 8,
+      \ 'window_cmd': 'vertical topleft new',
       \ }
 
 function! packager#new(opts) abort
@@ -228,9 +229,9 @@ function! s:packager.open_buffer() abort
 
   if l:is_current_packager
     set modifiable
-    silent! exe 'norm!gg"_dG'
+    silent 1,$delete _
   else
-    vertical topleft new
+    exe self.window_cmd
   endif
 
   setf packager
@@ -307,7 +308,7 @@ function! s:packager.open_stdout(...) abort
   silent exe 'pedit' l:plugin_name
   wincmd p
   setlocal previewwindow filetype=sh buftype=nofile nobuflisted modifiable
-  silent! exe 'norm!gg"_dG'
+  silent 1,$delete _
   call append(0, l:content)
   setlocal nomodifiable
   nnoremap <silent><buffer> q :q<CR>

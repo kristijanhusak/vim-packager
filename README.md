@@ -83,6 +83,7 @@ Available options:
 * `depth` - `--depth` value to use when cloning. Default: `5`
 * `jobs` - Maximum number of jobs that can run at same time. `0` is treated as unlimited. Default: `8`
 * `dir` - Directory to use for installation. By default uses `&packpath` value, which is `~/.vim/pack/packager` in Vim, and `~/.config/nvim/pack/packager` in Neovim.
+* `window_cmd` - What command to use to open packager window. Default: `vertical topleft new`
 
 #### packager#add(name, options)
 
