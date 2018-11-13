@@ -1,3 +1,4 @@
+scriptencoding utf8
 let s:plugin = {}
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = { 'name': '', 'type': 'start', 'branch': '', 'commit': '', 'tag': '',
@@ -12,16 +13,20 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.packager = a:packager
   let l:instance.name = !empty(l:instance.name) ? l:instance.name : split(a:name, '/')[-1]
   let l:instance.dir = printf('%s%s%s%s%s', a:packager.dir, s:slash, l:instance.type, s:slash, l:instance.name)
-  let l:instance.url = a:name =~? '^http.*' ? a:name : printf('https://github.com/%s', a:name)
+  let l:instance.url = a:name =~? '^\(http\|git@\).*' ? a:name : printf('https://github.com/%s', a:name)
   let l:instance.event_messages = []
   let l:instance.hook_event_messages = []
   let l:instance.update_failed = 0
   let l:instance.hook_failed = 0
   let l:instance.last_update = []
+  let l:instance.head_ref = ''
+  let l:instance.main_branch = ''
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
     let l:instance.rev = l:instance.revision()
     let l:instance.last_update = l:instance.get_last_update()
+    let l:instance.head_ref = l:instance.get_head_ref()
+    let l:instance.main_branch = l:instance.get_main_branch()
   endif
   return l:instance
 endfunction
@@ -41,14 +46,30 @@ function! s:plugin.update_status(status, text) abort
 endfunction
 
 function! s:plugin.update_git_command() abort
-  let l:update_cmd = ['cd', self.dir, '&&', 'git', 'pull', '--ff-only', '--progress']
-  let l:update_cmd += ['&&', 'git', 'submodule', 'update', '--init', '--recursive', '--progress']
+  let l:update_cmd = ['cd', self.dir]
+  let l:has_checkout = v:false
+  let l:is_on_branch = v:true
 
-  for l:checkout_target in [self.commit, self.tag]
+  for l:checkout_target in [self.commit, self.tag, self.branch]
     if !empty(l:checkout_target)
-      return l:update_cmd + ['&&', 'git', 'checkout', l:checkout_target]
+      let l:update_cmd += ['&&', 'git', 'checkout', l:checkout_target]
+      let l:is_on_branch = l:checkout_target ==? self.branch
+      let l:has_checkout = v:true
+      break
     endif
   endfor
+
+  if !l:has_checkout && self.head_ref ==? 'HEAD' && !empty(self.main_branch)
+    let l:is_on_branch = v:true
+    let l:update_cmd += ['&&', 'git', 'checkout', self.main_branch]
+  endif
+
+  if l:is_on_branch
+    let l:update_cmd += ['&&', 'git', 'pull', '--ff-only', '--progress']
+  else
+    let l:update_cmd += ['&&', 'git', 'fetch', self.url]
+  endif
+  let l:update_cmd += ['&&', 'git', 'submodule', 'update', '--init', '--recursive', '--progress']
 
   return l:update_cmd
 endfunction
@@ -102,6 +123,24 @@ function! s:plugin.revision() abort
   return l:rev
 endfunction
 
+function! s:plugin.get_head_ref() abort
+  let l:head = get(packager#utils#system(['git', '-C', self.dir, 'rev-parse', '--abbrev-ref', 'HEAD']), 0, '')
+  if l:head =~? '^fatal'
+    return ''
+  endif
+
+  return l:head
+endfunction
+
+function! s:plugin.get_main_branch() abort
+  let l:ref = get(packager#utils#system(['git', '-C', self.dir, 'symbolic-ref', 'refs/remotes/origin/HEAD']), 0, '')
+  if l:ref =~? '^fatal'
+    return ''
+  endif
+
+  return split(l:ref, '/')[-1]
+endfunction
+
 function! s:plugin.update_install_status() abort
   if !self.installed
     let self.installed = 1
@@ -118,7 +157,7 @@ function! s:plugin.update_install_status() abort
   return 'Already up to date.'
 endfunction
 
-function s:plugin.get_message_key(is_hook) abort
+function! s:plugin.get_message_key(is_hook) abort
   if a:is_hook
     return 'hook_event_messages'
   endif
