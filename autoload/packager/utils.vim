@@ -1,3 +1,4 @@
+scriptencoding utf8
 function! packager#utils#system(cmds) abort
   let l:save_shell = packager#utils#set_shell()
   let l:cmd_output = systemlist(join(a:cmds, ' '))
@@ -5,19 +6,19 @@ function! packager#utils#system(cmds) abort
   return l:cmd_output
 endfunction
 
-function! packager#utils#status_ok(name, status_text)
+function! packager#utils#status_ok(name, status_text) abort
   return packager#utils#status('ok', a:name, a:status_text)
 endfunction
 
-function! packager#utils#status_progress(name, status_text)
+function! packager#utils#status_progress(name, status_text) abort
   return packager#utils#status('progress', a:name, a:status_text)
 endfunction
 
-function! packager#utils#status_error(name, status_text)
+function! packager#utils#status_error(name, status_text) abort
   return packager#utils#status('error', a:name, a:status_text)
 endfunction
 
-function! packager#utils#status_icons()
+function! packager#utils#status_icons() abort
   return { 'ok': '✓', 'error': '✗', 'progress': '+' }
 endfunction
 

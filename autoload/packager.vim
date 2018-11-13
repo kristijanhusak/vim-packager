@@ -1,3 +1,4 @@
+scriptencoding utf8
 let s:packager = {}
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = {
@@ -80,7 +81,7 @@ function! s:packager.clean() abort
   let l:folders = glob(printf('%s%s*%s*', self.dir, s:slash, s:slash), 0, 1)
   let self.processed_plugins = copy(self.plugins)
   let l:plugins = values(map(copy(self.processed_plugins), 'substitute(v:val.dir, ''\(\\\|\/\)'', s:slash, ''g'')'))
-  function! s:clean_filter(plugins, key, val)
+  function! s:clean_filter(plugins, key, val) abort
     return index(a:plugins, a:val) < 0
   endfunction
 
@@ -160,7 +161,7 @@ function! s:packager.status() abort
   setlocal nomodifiable
 endfunction
 
-function! s:packager.quit()
+function! s:packager.quit() abort
   if self.is_running()
     if !packager#utils#confirm('Installation is in progress. Are you sure you want to quit?')
       return
@@ -376,7 +377,7 @@ function! s:packager.is_running() abort
   return self.remaining_jobs > 0
 endfunction
 
-function! s:stdout_handler(plugin, id, message, event) dict
+function! s:stdout_handler(plugin, id, message, event) dict abort
   call a:plugin.log_event_messages(a:event, a:message)
 
   if a:event !=? 'exit'
@@ -421,7 +422,7 @@ function! s:stdout_handler(plugin, id, message, event) dict
   endif
 endfunction
 
-function! s:hook_stdout_handler(plugin, id, message, event) dict
+function! s:hook_stdout_handler(plugin, id, message, event) dict abort
   call a:plugin.log_event_messages(a:event, a:message, 'hook')
 
   if a:event !=? 'exit'
