@@ -8,8 +8,6 @@ Tested with:
 * Neovim 0.3.2 - Linux, MacOS and Windows 10
 * Vim 8.0 - Linux and Windows 10
 
-It's still in testing phase. Any feedback is appreciated.
-
 ## Why?
 There's a lot of plugin managers for vim out there.
 
