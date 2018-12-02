@@ -12,6 +12,11 @@ function! packager#add(name, ...) abort
   return g:packager.add(a:name, a:000)
 endfunction
 
+function! packager#local(name, ...) abort
+  call s:ensure_init()
+  return g:packager.local(a:name, a:000)
+endfunction
+
 function! packager#install(...) abort
   call s:ensure_init()
   return g:packager.install(a:0 > 0 ? a:1 : {})

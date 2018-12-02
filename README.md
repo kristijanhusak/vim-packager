@@ -58,10 +58,11 @@ function! PackagerInit() abort
   call packager#add('Shougo/deoplete.nvim')
   call packager#add('autozimu/LanguageClient-neovim', { 'do': 'bash install.sh' })
   call packager#add('morhetz/gruvbox')
+  call packager#local('~/my_vim_plugins/my_awesome_plugin')
 endfunction
 
 command! PackagerInstall call PackagerInit() | call packager#install()
-command! PackagerUpdate call PackagerInit() | call packager#update()
+command! -bang PackagerUpdate call PackagerInit() | call packager#update({ 'force_hooks': '<bang>' })
 command! PackagerClean call PackagerInit() | call packager#clean()
 command! PackagerStatus call PackagerInit() | call packager#status()
 ```
@@ -104,6 +105,19 @@ where plugins that are auto loaded goes to `start` folder. Default: `start`
 * `tag`
 * `branch`
 
+#### packager#local(name, options)
+**Note**: This function only creates a symbolic link from provided path to the packager folder
+
+`name` - Full path to the local folder
+Example: `~/my_plugins/my_awesome_plugin`
+
+Options:
+* `name` - Custom name of the plugin. If ommited, last part of path is taken (example: `my_awesome_plugin`, in `~/my_plugins/my_awesome_plugin`)
+* `type` - In which folder to install the plugin. Plugins that are loaded on demand (with `packadd`), goes to `opt` directory,
+where plugins that are auto loaded goes to `start` folder. Default: `start`
+* `do` - Hook to run after plugin is installed/updated: Default: ''
+* `frozen` - When plugin is frozen, it is not being updated. Default: 0
+
 #### packager#install(opts)
 
 This only installs plugins that are not installed
@@ -124,6 +138,7 @@ This installs plugins that are not installed, and updates existing one to the la
 Available options:
 
 * `on_finish` - Run command after update finishes. For example to quit at the end: `call packager#update({ 'on_finish': 'quitall' })`
+* `force_hooks` - Force running post hooks for each package even if up to date. Useful when some hooks previously failed. Must be non-empty value: `call packager#update({ 'force_hooks': 1 })`
 
 When update finishes, there are two mappings that can be used:
 

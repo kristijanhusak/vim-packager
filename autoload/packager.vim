@@ -32,6 +32,13 @@ function! s:packager.add(name, opts) abort
   let self.plugins[l:plugin.name] = l:plugin
 endfunction
 
+function! s:packager.local(name, opts) abort
+  let l:opts = get(a:opts, 0, {})
+  let l:opts.local = 1
+  let l:plugin = packager#plugin#new(a:name, [l:opts], self)
+  let self.plugins[l:plugin.name] = l:plugin
+endfunction
+
 function! s:packager.install(opts) abort
   let self.result = []
   let self.processed_plugins = filter(copy(self.plugins), 'v:val.installed ==? 0')
@@ -46,7 +53,7 @@ function! s:packager.install(opts) abort
   call self.open_buffer()
   call self.update_top_status()
   for l:plugin in values(self.processed_plugins)
-    call self.start_job(l:plugin.git_command(self.depth), {
+    call self.start_job(l:plugin.command(self.depth), {
           \ 'handler': 's:stdout_handler',
           \ 'plugin': l:plugin,
           \ 'limit_jobs': v:true
@@ -69,7 +76,7 @@ function! s:packager.update(opts) abort
   call self.open_buffer()
   call self.update_top_status()
   for l:plugin in values(self.processed_plugins)
-    call self.start_job(l:plugin.git_command(self.depth), {
+    call self.start_job(l:plugin.command(self.depth), {
           \ 'handler': 's:stdout_handler',
           \ 'plugin': l:plugin,
           \ 'limit_jobs': v:true
@@ -394,7 +401,7 @@ function! s:stdout_handler(plugin, id, message, event) dict abort
 
   let l:status_text = a:plugin.update_install_status()
 
-  if a:plugin.updated && !empty(a:plugin.do)
+  if (a:plugin.updated || !empty(get(self.post_run_opts, 'force_hooks', 0))) && !empty(a:plugin.do)
     call packager#utils#load_plugin(a:plugin)
     call a:plugin.update_status('progress', 'Running post update hooks...')
     if a:plugin.do[0] ==? ':'

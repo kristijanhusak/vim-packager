@@ -13,7 +13,10 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.packager = a:packager
   let l:instance.name = !empty(l:instance.name) ? l:instance.name : split(a:name, '/')[-1]
   let l:instance.dir = printf('%s%s%s%s%s', a:packager.dir, s:slash, l:instance.type, s:slash, l:instance.name)
-  let l:instance.url = a:name =~? '^\(http\|git@\).*' ? a:name : printf('https://github.com/%s', a:name)
+  let l:instance.local = get(l:instance, 'local', 0)
+  let l:instance.url = a:name =~? '^\(http\|git@\).*'
+        \ ? a:name
+        \ : l:instance.local ? a:name : printf('https://github.com/%s', a:name)
   let l:instance.event_messages = []
   let l:instance.hook_event_messages = []
   let l:instance.update_failed = 0
@@ -95,9 +98,25 @@ function! s:plugin.install_git_command(depth) abort
   return l:clone_cmd
 endfunction
 
-function! s:plugin.git_command(depth) abort
-  if isdirectory(self.dir)
+function! s:plugin.local_command() abort
+  if executable('ln')
+    return ['ln', '-s', fnamemodify(self.url, ':p'), self.dir]
+  endif
+
+  if has('win32') && executable('mklink')
+    return ['mklink', fnamemodify(self.url, ':p'), self.dir]
+  endif
+
+  return ['echo', printf('Cannot install %s locally, linking tool not found.', self.name)]
+endfunction
+
+function! s:plugin.command(depth) abort
+  if isdirectory(self.dir) && !self.local
     return join(self.update_git_command(), ' ')
+  endif
+
+  if self.local
+    return join(self.local_command())
   endif
 
   return join(self.install_git_command(a:depth), ' ')
