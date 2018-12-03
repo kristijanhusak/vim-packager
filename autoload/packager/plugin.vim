@@ -78,22 +78,24 @@ function! s:plugin.update_git_command() abort
 endfunction
 
 function! s:plugin.install_git_command(depth) abort
-  let l:requires_checkout = !empty(self.tag) || !empty(self.commit)
-  let l:depth = l:requires_checkout ? '999999' : a:depth
+  let l:depth = !empty(self.commit) ? '999999' : a:depth
   let l:clone_cmd = ['git', 'clone', '--progress', self.url, self.dir, '--depth', l:depth]
 
-  if !empty(self.branch) && !l:requires_checkout
-    let l:clone_cmd += ['--branch', self.branch]
+  if empty(self.commit)
+    for l:branch_or_tag in [self.tag, self.branch]
+      if !empty(l:branch_or_tag)
+        let l:clone_cmd += ['--branch', l:branch_or_tag]
+        break
+      endif
+    endfor
   endif
 
   let l:clone_cmd += ['&&', 'cd', self.dir]
   let l:clone_cmd += ['&&', 'git', 'submodule', 'update', '--init', '--recursive', '--progress']
 
-  for l:checkout_target in [self.commit, self.tag]
-    if !empty(l:checkout_target)
-      return l:clone_cmd + ['&&', 'git', 'checkout', l:checkout_target]
-    endif
-  endfor
+  if !empty(self.commit)
+    let l:clone_cmd += ['&&', 'git', 'checkout', self.commit]
+  endif
 
   return l:clone_cmd
 endfunction
