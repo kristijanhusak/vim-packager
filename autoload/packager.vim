@@ -22,6 +22,8 @@ function! s:packager.new(opts) abort
   let l:instance.processed_plugins = {}
   let l:instance.remaining_jobs = 0
   let l:instance.running_jobs = 0
+  let l:instance.install_ran = 0
+  let l:instance.update_ran = 0
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'opt'), 'p')
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'start'), 'p')
   return l:instance
@@ -49,6 +51,7 @@ function! s:packager.install(opts) abort
     return
   endif
 
+  let self.install_ran = 1
   let self.post_run_opts = a:opts
   call self.open_buffer()
   call self.update_top_status()
@@ -71,6 +74,7 @@ function! s:packager.update(opts) abort
     return
   endif
 
+  let self.update_ran = 1
   let self.post_run_opts = a:opts
   let self.command_type = 'update'
   call self.open_buffer()
@@ -139,7 +143,13 @@ function! s:packager.status() abort
     return
   endif
   let l:result = []
-  let self.processed_plugins = copy(self.plugins)
+  if self.install_ran
+    let self.processed_plugins = filter(copy(self.plugins), 'v:val.installed_now ==? 1')
+  elseif self.update_ran
+    let self.processed_plugins = filter(copy(self.plugins), 'v:val.updated ==? 1')
+  else
+    let self.processed_plugins = copy(self.plugins)
+  endif
   let l:has_errors = 0
 
   for l:plugin in values(self.processed_plugins)

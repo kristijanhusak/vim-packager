@@ -24,6 +24,7 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.last_update = []
   let l:instance.head_ref = ''
   let l:instance.main_branch = ''
+  let l:instance.installed_now = 0
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
     let l:instance.rev = l:instance.revision()
@@ -166,6 +167,7 @@ function! s:plugin.update_install_status() abort
   if !self.installed
     let self.installed = 1
     let self.updated = 1
+    let self.installed_now = 1
     return 'Installed!'
   endif
 
@@ -255,11 +257,16 @@ function! s:plugin.get_content_for_status() abort
           \ printf('  * %s', self.get_short_error_message('hook'))]
   endif
 
+  if self.installed_now
+    return [packager#utils#status_ok(self.name, 'Installed!')]
+  endif
+
   if empty(self.last_update)
     return [packager#utils#status_ok(self.name, 'OK.')]
   endif
 
-  let l:result = [packager#utils#status_ok(self.name, 'Updated.')]
+  let l:update_text = self.updated ? 'Updated!' : 'Last update:'
+  let l:result = [packager#utils#status_ok(self.name, l:update_text)]
   for l:update in self.last_update
     call add(l:result, printf('  * %s', l:update))
   endfor
