@@ -25,7 +25,7 @@ You can easily loose track what's happening in the process, and echoing causes a
 `Packager` utilizes jobs feature to the maximum, and runs everything that it can in a job, and shows whole process in the separate window, in a very similar way that vim-plug does.
 
 ## Requirement
-* Neovim 0.20+ OR Vim 8.0.0050+
+* Neovim 0.20+ OR Vim 8.0.0902+
 * Git
 * Windows, Linux, macOS (Not tested)
 
