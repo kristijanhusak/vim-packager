@@ -64,6 +64,12 @@ function! PackagerInit() abort
   call packager#add('kristijanhusak/vim-js-file-import', { 'do': 'npm install', 'type': 'opt' })
   call packager#add('fatih/vim-go', { 'do': ':GoInstallBinaries', 'type': 'opt' })
   call packager#add('phpactor/phpactor', { 'do': 'composer install', 'type': 'opt' })
+  call packager#add('neoclide/coc.nvim', { 'do': function('InstallCoc') })
+endfunction
+
+function! InstallCoc(plugin) abort
+  exe '!cd '.a:plugin.dir.' && yarn install'
+  call coc#add_extension('coc-eslint', 'coc-tsserver', 'coc-pyls')
 endfunction
 
 command! PackagerInstall call PackagerInit() | call packager#install()

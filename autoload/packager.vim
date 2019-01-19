@@ -414,7 +414,15 @@ function! s:stdout_handler(plugin, id, message, event) dict abort
   if (a:plugin.updated || !empty(get(self.post_run_opts, 'force_hooks', 0))) && !empty(a:plugin.do)
     call packager#utils#load_plugin(a:plugin)
     call a:plugin.update_status('progress', 'Running post update hooks...')
-    if a:plugin.do[0] ==? ':'
+    if type(a:plugin.do) ==? type(function('call'))
+      try
+        call call(a:plugin.do, [a:plugin])
+        call a:plugin.update_status('ok', 'Finished running post update hook!')
+      catch
+        call a:plugin.update_status('error', printf('Error on hook - %s', v:exception))
+      endtry
+      call self.update_top_status_installed()
+    elseif a:plugin.do[0] ==? ':'
       try
         exe a:plugin.do[1:]
         call a:plugin.update_status('ok', 'Finished running post update hook!')
