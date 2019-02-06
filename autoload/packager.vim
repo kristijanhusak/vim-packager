@@ -24,6 +24,8 @@ function! s:packager.new(opts) abort
   let l:instance.running_jobs = 0
   let l:instance.install_ran = 0
   let l:instance.update_ran = 0
+  let l:instance.bufname = '__packager__'
+  let l:instance.bufnr = -1
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'opt'), 'p')
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'start'), 'p')
   return l:instance
@@ -104,11 +106,11 @@ function! s:packager.clean() abort
   endif
 
   call self.open_buffer()
-  call setline(1, 'Clean up.')
-  call setline(2, '')
+  call self.setline(1, 'Clean up.')
+  call self.setline(2, '')
 
   for l:item in l:to_clean
-    call append(2, packager#utils#status_progress(l:item, 'Waiting for confirmation...'))
+    call self.append(2, packager#utils#status_progress(l:item, 'Waiting for confirmation...'))
   endfor
 
   "Reverse list so the item gets deleted from top to bottom
@@ -124,15 +126,15 @@ function! s:packager.clean() abort
     if l:option ==? 3
       let l:confirm_delete = packager#utils#confirm(printf('Remove %s ?', l:item))
       if !l:confirm_delete
-        call setline(l:line, packager#utils#status_ok(l:item, 'Skipped.'))
+        call self.setline(l:line, packager#utils#status_ok(l:item, 'Skipped.'))
         continue
       endif
     endif
 
     if delete(l:item, 'rf') !=? 0
-      call setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
+      call self.setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
     else
-      call setline(l:line, packager#utils#status_ok(l:item, 'Removed!'))
+      call self.setline(l:line, packager#utils#status_ok(l:item, 'Removed!'))
     endif
   endfor
 endfunction
@@ -165,16 +167,14 @@ function! s:packager.status() abort
   endfor
 
   call self.open_buffer()
-  call setline(1, 'Plugin status.')
-  call setline(2, '')
-  call append(2, l:result)
-
-  call append('$', '')
-  call append('$', "Press 'Enter' on commit lines to preview the commit.")
+  call self.setline(1, 'Plugin status.')
+  let l:lines = [''] + l:result + ['', "Press 'Enter' on commit lines to preview the commit."]
   if l:has_errors
-    call append('$', "Press 'E' on errored plugins to view stdout.")
+    let l:lines += [ "Press 'E' on errored plugins to view stdout."]
   endif
-  call append('$', "Press 'q' to quit this buffer.")
+  let l:lines += ["Press 'q' to quit this buffer."]
+
+  call self.setline(2, l:lines)
   setlocal nomodifiable
 endfunction
 
@@ -198,9 +198,9 @@ function! s:packager.update_top_status() abort
 
   let l:install_text = self.remaining_jobs > 0 ? 'Installing' : 'Installed'
   let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished!'
-  call setline(1, printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished))
-  call setline(2, l:bar)
-  return setline(3, '')
+  call self.setline(1, printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished))
+  call self.setline(2, l:bar)
+  return self.setline(3, '')
 endfunction
 
 function! s:packager.update_top_status_installed() abort
@@ -218,13 +218,12 @@ function! s:packager.run_post_update_hooks() abort
 
   let self.post_run_hooks_called = 1
 
-  if getbufvar(bufname('%'), '&filetype') ==? 'packager'
-    call append('$', '')
-    call append('$', "Press 'D' to view latest updates.")
-    call append('$', "Press 'E' on a plugin line to see stdout in preview window.")
-    call append('$', "Press 'q' to quit this buffer.")
-    setlocal nomodifiable
-  endif
+  call self.append(packager#utils#lastline(self.bufnr), [
+        \ '',
+        \ "Press 'D' to view latest updates.",
+        \ "Press 'E' on a plugin line to see stdout in preview window.",
+        \ "Press 'q' to quit this buffer."
+        \ ])
 
   call self.update_remote_plugins_and_helptags()
 
@@ -235,22 +234,17 @@ function! s:packager.run_post_update_hooks() abort
 endfunction
 
 function! s:packager.open_buffer() abort
-  let l:is_current_packager = &filetype ==? 'packager'
+  let l:bufnr = bufnr(self.bufname)
 
-  if !l:is_current_packager
-    let l:packager_window_numbers = filter(range(1, winnr('$')), 'getwinvar(v:val, "&filetype") ==? "packager"')
-    if len(l:packager_window_numbers) > 0
-      silent! exe printf('%dwincmd w', l:packager_window_numbers[0])
-      let l:is_current_packager = 1
-    endif
-  endif
-
-  if l:is_current_packager
+  if l:bufnr > -1
+    exe 'b'.l:bufnr
     set modifiable
     silent 1,$delete _
   else
-    exe self.window_cmd
+    exe self.window_cmd self.bufname
   endif
+
+  let self.bufnr = bufnr(self.bufname)
 
   setf packager
   setlocal modifiable buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell
@@ -284,6 +278,8 @@ function! s:packager.open_buffer() abort
   nnoremap <silent><buffer> <C-j> :call g:packager.goto_plugin('next')<CR>
   nnoremap <silent><buffer> <C-k> :call g:packager.goto_plugin('previous')<CR>
   nnoremap <silent><buffer> D :call g:packager.status()<CR>
+
+  wincmd p
 endfunction
 
 function! s:packager.open_sha() abort
@@ -392,6 +388,14 @@ endfunction
 
 function! s:packager.is_running() abort
   return self.remaining_jobs > 0
+endfunction
+
+function! s:packager.setline(lnum, content) abort
+  return packager#utils#setline(self.bufnr, a:lnum, a:content)
+endfunction
+
+function! s:packager.append(lnum, content) abort
+  return packager#utils#append(self.bufnr, a:lnum, a:content)
 endfunction
 
 function! s:stdout_handler(plugin, id, message, event) dict abort

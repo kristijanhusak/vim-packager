@@ -89,3 +89,37 @@ function! packager#utils#load_plugin(plugin) abort
     endif
   endfor
 endfunction
+
+function! packager#utils#setline(bufnr, lnum, content) abort
+  echom 'SETTING LINE CONTENT '.string(a:content). ' to line 'a:lnum
+  silent! exe 'redraw'
+  let l:content = type(a:content) ==? type('') ? [a:content] : a:content
+  let l:line = type(a:lnum) ==? type('') ? line(a:lnum) : a:lnum
+
+  if exists('*setbufline')
+    return setbufline(bufname(a:bufnr), l:line, l:content)
+  endif
+
+  return nvim_buf_set_lines(a:bufnr, l:line - 1, l:line, v:false, l:content)
+endfunction
+
+function! packager#utils#append(bufnr, lnum, content) abort
+  echom 'APPENDING '.string(a:content). ' to line 'a:lnum
+  silent! exe 'redraw'
+  let l:content = type(a:content) ==? type('') ? [a:content] : a:content
+  let l:line = type(a:lnum) ==? type('') ? line(a:lnum) : a:lnum
+
+  if exists('*appendbufline')
+    return appendbufline(bufname(a:bufnr), l:line, l:content)
+  endif
+
+  return nvim_buf_set_lines(a:bufnr, l:line, l:line, v:true, l:content)
+endfunction
+
+function! packager#utils#lastline(bufnr) abort
+  if exists('*getbufline')
+    return len(getbufline(bufname(a:bufnr), 1, '$'))
+  endif
+
+  return nvim_buf_line_count(a:bufnr)
+endfunction

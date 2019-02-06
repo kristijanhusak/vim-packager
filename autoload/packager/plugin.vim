@@ -25,6 +25,7 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.head_ref = ''
   let l:instance.main_branch = ''
   let l:instance.installed_now = 0
+  let l:instance.line = 0
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
     let l:instance.rev = l:instance.revision()
@@ -36,17 +37,16 @@ function! s:plugin.new(name, opts, packager) abort
 endfunction
 
 function! s:plugin.update_status(status, text) abort
-  if getbufvar(bufname('%'), '&filetype') !=? 'packager'
-    return
-  endif
-  let l:icons = join(values(packager#utils#status_icons()), '\|')
-  let l:existing_line = search(printf('\(%s\)\s%s\s—', l:icons, self.name), 'n')
-  if l:existing_line > 0
-    let self.line = l:existing_line
-    return setline(self.line, packager#utils#status(a:status, self.name, a:text))
+  if self.line > 0
+    return packager#utils#setline(
+          \ self.packager.bufnr, self.line, packager#utils#status(a:status, self.name, a:text)
+          \ )
   endif
 
-  return append(3, packager#utils#status(a:status, self.name, a:text))
+  let self.line = packager#utils#lastline(self.packager.bufnr)
+  return packager#utils#append(
+        \ self.packager.bufnr, self.line, packager#utils#status(a:status, self.name, a:text)
+        \ )
 endfunction
 
 function! s:plugin.update_git_command() abort
