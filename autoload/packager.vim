@@ -55,6 +55,9 @@ function! s:packager.install(opts) abort
   let self.post_run_opts = a:opts
   call self.open_buffer()
   call self.update_top_status()
+  let l:initial_content = map(values(self.processed_plugins), 'v:val.get_initial_status(v:key + 4)')
+  call packager#utils#append(3, l:initial_content)
+
   for l:plugin in values(self.processed_plugins)
     call self.start_job(l:plugin.command(self.depth), {
           \ 'handler': 's:stdout_handler',
@@ -79,6 +82,9 @@ function! s:packager.update(opts) abort
   let self.command_type = 'update'
   call self.open_buffer()
   call self.update_top_status()
+  let l:initial_content = map(values(self.processed_plugins), 'v:val.get_initial_status(v:key + 4)')
+  call packager#utils#append(3, l:initial_content)
+
   for l:plugin in values(self.processed_plugins)
     call self.start_job(l:plugin.command(self.depth), {
           \ 'handler': 's:stdout_handler',
@@ -104,15 +110,17 @@ function! s:packager.clean() abort
   endif
 
   call self.open_buffer()
-  call setline(1, 'Clean up.')
-  call setline(2, '')
+  let l:content = ['Clean up', '']
+  let l:lines = {}
 
+  let l:index = 3
   for l:item in l:to_clean
-    call append(2, packager#utils#status_progress(l:item, 'Waiting for confirmation...'))
+    call add(l:content, packager#utils#status_progress(l:item, 'Waiting for confirmation...'))
+    let l:lines[l:item] = l:index
+    let l:index += 1
   endfor
 
-  "Reverse list so the item gets deleted from top to bottom
-  call reverse(l:to_clean)
+  call packager#utils#setline(1, l:content)
 
   let l:option = packager#utils#confirm_with_options('Remove above folder(s)?', "&Yes\n&No\n&Ask for each folder")
   if l:option ==? 2
@@ -120,21 +128,22 @@ function! s:packager.clean() abort
   endif
 
   for l:item in l:to_clean
-    let l:line = search(printf('^+\s%s\s—', escape(l:item, '/\')), 'n')
+    let l:line = l:lines[l:item]
     if l:option ==? 3
       let l:confirm_delete = packager#utils#confirm(printf('Remove %s ?', l:item))
       if !l:confirm_delete
-        call setline(l:line, packager#utils#status_ok(l:item, 'Skipped.'))
+        call packager#utils#setline(l:line, packager#utils#status_ok(l:item, 'Skipped.'))
         continue
       endif
     endif
 
     if delete(l:item, 'rf') !=? 0
-      call setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
+      call packager#utils#setline(l:line, packager#utils#status_error(l:item, 'Failed.'))
     else
-      call setline(l:line, packager#utils#status_ok(l:item, 'Removed!'))
+      call packager#utils#setline(l:line, packager#utils#status_ok(l:item, 'Removed!'))
     endif
   endfor
+  call setbufvar('__packager__', '&modifiable', 0)
 endfunction
 
 function! s:packager.status() abort
@@ -165,17 +174,14 @@ function! s:packager.status() abort
   endfor
 
   call self.open_buffer()
-  call setline(1, 'Plugin status.')
-  call setline(2, '')
-  call append(2, l:result)
-
-  call append('$', '')
-  call append('$', "Press 'Enter' on commit lines to preview the commit.")
+  let l:content = ['Plugin status.', ''] + l:result + ['', "Press 'Enter' on commit lines to preview the commit."]
   if l:has_errors
-    call append('$', "Press 'E' on errored plugins to view stdout.")
+    call add(l:content, "Press 'E' on errored plugins to view stdout.")
   endif
-  call append('$', "Press 'q' to quit this buffer.")
-  setlocal nomodifiable
+  call add(l:content, "Press 'q' to quit this buffer.")
+
+  call packager#utils#setline(1, l:content)
+  call setbufvar('__packager__', '&modifiable', 0)
 endfunction
 
 function! s:packager.quit() abort
@@ -198,9 +204,9 @@ function! s:packager.update_top_status() abort
 
   let l:install_text = self.remaining_jobs > 0 ? 'Installing' : 'Installed'
   let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished!'
-  call setline(1, printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished))
-  call setline(2, l:bar)
-  return setline(3, '')
+  call packager#utils#setline(1, printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished))
+  call packager#utils#setline(2, l:bar)
+  return packager#utils#setline(3, '')
 endfunction
 
 function! s:packager.update_top_status_installed() abort
@@ -218,13 +224,11 @@ function! s:packager.run_post_update_hooks() abort
 
   let self.post_run_hooks_called = 1
 
-  if getbufvar(bufname('%'), '&filetype') ==? 'packager'
-    call append('$', '')
-    call append('$', "Press 'D' to view latest updates.")
-    call append('$', "Press 'E' on a plugin line to see stdout in preview window.")
-    call append('$', "Press 'q' to quit this buffer.")
-    setlocal nomodifiable
-  endif
+  call packager#utils#append('$', '')
+  call packager#utils#append('$', "Press 'D' to view latest updates.")
+  call packager#utils#append('$', "Press 'E' on a plugin line to see stdout in preview window.")
+  call packager#utils#append('$', "Press 'q' to quit this buffer.")
+  call setbufvar('__packager__', '&modifiable', 0)
 
   call self.update_remote_plugins_and_helptags()
 
@@ -235,25 +239,18 @@ function! s:packager.run_post_update_hooks() abort
 endfunction
 
 function! s:packager.open_buffer() abort
-  let l:is_current_packager = &filetype ==? 'packager'
+  let l:bufnr = bufnr('__packager__')
 
-  if !l:is_current_packager
-    let l:packager_window_numbers = filter(range(1, winnr('$')), 'getwinvar(v:val, "&filetype") ==? "packager"')
-    if len(l:packager_window_numbers) > 0
-      silent! exe printf('%dwincmd w', l:packager_window_numbers[0])
-      let l:is_current_packager = 1
-    endif
-  endif
-
-  if l:is_current_packager
+  if l:bufnr > -1
+    silent! exe 'b'.l:bufnr
     set modifiable
     silent 1,$delete _
   else
-    exe self.window_cmd
+    exe self.window_cmd '__packager__'
   endif
 
   setf packager
-  setlocal modifiable buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell
+  setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell
   syntax clear
   syn match packagerCheck /^✓/
   syn match packagerPlus /^+/
@@ -305,8 +302,9 @@ function! s:packager.open_sha() abort
         \ '--no-color', '--pretty=medium', l:sha
         \ ])
 
-  call append(0, l:sha_content)
+  call setline(1, l:sha_content)
   setlocal nomodifiable
+  call cursor(1, 1)
   nnoremap <silent><buffer> q :q<CR>
 endfunction
 
@@ -327,8 +325,9 @@ function! s:packager.open_stdout(...) abort
   wincmd p
   setlocal previewwindow filetype=sh buftype=nofile nobuflisted modifiable
   silent 1,$delete _
-  call append(0, l:content)
+  call setline(1, l:content)
   setlocal nomodifiable
+  call cursor(1, 1)
   nnoremap <silent><buffer> q :q<CR>
 endfunction
 

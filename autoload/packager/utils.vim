@@ -89,3 +89,28 @@ function! packager#utils#load_plugin(plugin) abort
     endif
   endfor
 endfunction
+
+function! s:add_line(line, content, method) abort
+  let l:packager_bufnr = bufnr('__packager_')
+  let l:current_bufnr = bufnr('')
+
+  if l:packager_bufnr < 0
+    return
+  endif
+
+  if l:packager_bufnr ==? l:current_bufnr
+    return call(a:method, [a:line, a:content])
+  endif
+
+  silent! exe printf('%wincmd w', l:packager_bufnr)
+  call call(a:method, [a:line, a:content])
+  silent! exe printf('%wincmd w', l:current_bufnr)
+endfunction
+
+function! packager#utils#append(line, content) abort
+  return s:add_line(a:line, a:content, 'append')
+endfunction
+
+function! packager#utils#setline(line, content) abort
+  return s:add_line(a:line, a:content, 'setline')
+endfunction
