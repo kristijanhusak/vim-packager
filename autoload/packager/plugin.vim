@@ -99,7 +99,7 @@ endfunction
 
 function! s:plugin.local_command() abort
   if executable('ln')
-    return ['ln', '-s', fnamemodify(self.url, ':p'), self.dir]
+    return ['ln', '-sf', fnamemodify(self.url, ':p'), self.dir]
   endif
 
   if has('win32') && executable('mklink')
