@@ -1,7 +1,7 @@
 scriptencoding utf8
 function! packager#utils#system(cmds) abort
   let l:save_shell = packager#utils#set_shell()
-  let l:cmd_output = systemlist(join(a:cmds, ' '))
+  let l:cmd_output = systemlist(a:cmds)
   call packager#utils#restore_shell(l:save_shell)
   return l:cmd_output
 endfunction
