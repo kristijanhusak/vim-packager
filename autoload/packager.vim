@@ -175,6 +175,7 @@ function! s:packager.status() abort
 
   call self.open_buffer()
   let l:content = ['Plugin status.', ''] + l:result + ['', "Press 'Enter' on commit lines to preview the commit."]
+  call add(l:content, "Press 'O' on plugin or commit to open plugin details.")
   if l:has_errors
     call add(l:content, "Press 'E' on errored plugins to view stdout.")
   endif
@@ -226,6 +227,7 @@ function! s:packager.run_post_update_hooks() abort
 
   call packager#utils#append('$', '')
   call packager#utils#append('$', "Press 'D' to view latest updates.")
+  call packager#utils#append('$', "Press 'O' on plugin or commit to open plugin details.")
   call packager#utils#append('$', "Press 'E' on a plugin line to see stdout in preview window.")
   call packager#utils#append('$', "Press 'q' to quit this buffer.")
   call setbufvar('__packager__', '&modifiable', 0)
@@ -281,6 +283,7 @@ function! s:packager.open_buffer() abort
   nnoremap <silent><buffer> <C-j> :call g:packager.goto_plugin('next')<CR>
   nnoremap <silent><buffer> <C-k> :call g:packager.goto_plugin('previous')<CR>
   nnoremap <silent><buffer> D :call g:packager.status()<CR>
+  nnoremap <silent><buffer> O :call g:packager.open_plugin_details()<CR>
 endfunction
 
 function! s:packager.open_sha() abort
@@ -346,6 +349,49 @@ function! s:packager.goto_plugin(dir) abort
   let l:icons = join(values(packager#utils#status_icons()), '\|')
   let l:flag = a:dir ==? 'previous' ? 'b': ''
   return search(printf('^\(%s\)\s.*$', l:icons), l:flag)
+endfunction
+
+function! s:packager.open_plugin_details() abort
+  let l:plugin_name = packager#utils#trim(matchstr(getline('.'), '^.\s\zs[^—]*\ze'))
+  if !has_key(self.plugins, l:plugin_name)
+    return
+  endif
+
+  let l:plugin = self.plugins[l:plugin_name]
+
+  silent exe 'pedit' l:plugin.name
+  wincmd p
+  setlocal previewwindow buftype=nofile nobuflisted modifiable filetype=
+  silent 1,$delete _
+  let l:content = [
+        \ 'Plugin details:',
+        \ '',
+        \ 'Name: '.l:plugin.name,
+        \ 'Loading type: '.(l:plugin.type ==? 'start' ? 'Automatically' : 'Manually'),
+        \ 'Directory: '.l:plugin.dir,
+        \ 'Url: '.l:plugin.url,
+        \ ]
+
+  if !empty(l:plugin.branch)
+    call add(l:content, 'Branch: '.l:plugin.branch)
+  endif
+  if !empty(l:plugin.tag)
+    call add(l:content, 'Tag: '.l:plugin.tag)
+  endif
+  if !empty(l:plugin.commit)
+    call add(l:content, 'Commit: '.l:plugin.commit)
+  endif
+  if !empty(l:plugin.do) && type(l:plugin.do) ==? type('')
+    call add(l:content, 'Post install command: '.l:plugin.do)
+  endif
+  if l:plugin.frozen
+    call add(l:plugin, 'Plugin is frozen, no updates are executed for it.')
+  endif
+
+  call setline(1, l:content)
+  setlocal nomodifiable
+  call cursor(1, 1)
+  nnoremap <silent><buffer> q :q<CR>
 endfunction
 
 function! s:packager.update_remote_plugins_and_helptags() abort
