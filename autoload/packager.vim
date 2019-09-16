@@ -175,7 +175,7 @@ function! s:packager.status() abort
 
   call self.open_buffer()
   let l:content = ['Plugin status.', ''] + l:result + ['', "Press 'Enter' on commit lines to preview the commit."]
-  call add(l:content, "Press 'O' on plugin or commit to open plugin details.")
+  call add(l:content, "Press 'O' on plugin to open plugin details.")
   if l:has_errors
     call add(l:content, "Press 'E' on errored plugins to view stdout.")
   endif
@@ -227,7 +227,7 @@ function! s:packager.run_post_update_hooks() abort
 
   call packager#utils#append('$', '')
   call packager#utils#append('$', "Press 'D' to view latest updates.")
-  call packager#utils#append('$', "Press 'O' on plugin or commit to open plugin details.")
+  call packager#utils#append('$', "Press 'O' on plugin to open plugin details.")
   call packager#utils#append('$', "Press 'E' on a plugin line to see stdout in preview window.")
   call packager#utils#append('$', "Press 'q' to quit this buffer.")
   call setbufvar('__packager__', '&modifiable', 0)
