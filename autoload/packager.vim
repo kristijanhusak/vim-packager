@@ -277,13 +277,8 @@ function! s:packager.open_buffer() abort
   hi def link packagerSha            Identifier
   hi def link packagerRelDate        Comment
   hi def link packagerProgress       Boolean
-  nnoremap <silent><buffer> q :call g:packager.quit()<CR>
-  nnoremap <silent><buffer> <CR> :call g:packager.open_sha()<CR>
-  nnoremap <silent><buffer> E :call g:packager.open_stdout()<CR>
-  nnoremap <silent><buffer> <C-j> :call g:packager.goto_plugin('next')<CR>
-  nnoremap <silent><buffer> <C-k> :call g:packager.goto_plugin('previous')<CR>
-  nnoremap <silent><buffer> D :call g:packager.status()<CR>
-  nnoremap <silent><buffer> O :call g:packager.open_plugin_details()<CR>
+
+  call self.add_mappings()
 endfunction
 
 function! s:packager.open_sha() abort
@@ -437,6 +432,36 @@ endfunction
 
 function! s:packager.is_running() abort
   return self.remaining_jobs > 0
+endfunction
+
+function! s:packager.add_mappings() abort
+  if !hasmapto('<Plug>(PackagerQuit)')
+    silent! nmap <silent><buffer> q <Plug>(PackagerQuit)
+  endif
+
+  if !hasmapto('<Plug>(PackagerOpenSha)')
+    silent! nmap <silent><buffer> <CR> <Plug>(PackagerOpenSha)
+  endif
+
+  if !hasmapto('<Plug>(PackagerOpenStdout)')
+    silent! nmap <silent><buffer> E <Plug>(PackagerOpenStdout)
+  endif
+
+  if !hasmapto('<Plug>(PackagerGotoNextPlugin)')
+    silent! nmap <silent><buffer> <C-j> <Plug>(PackagerGotoNextPlugin)
+  endif
+
+  if !hasmapto('<Plug>(PackagerGotoPrevPlugin)')
+    silent! nmap <silent><buffer> <C-k> <Plug>(PackagerGotoPrevPlugin)
+  endif
+
+  if !hasmapto('<Plug>(PackagerStatus)')
+    silent! nmap <silent><buffer> D <Plug>(PackagerStatus)
+  endif
+
+  if !hasmapto('<Plug>(PackagerPluginDetails)')
+    silent! nmap <silent><buffer> O <Plug>(PackagerPluginDetails)
+  endif
 endfunction
 
 function! s:stdout_handler(plugin, id, message, event) dict abort

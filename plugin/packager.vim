@@ -43,3 +43,11 @@ function! s:ensure_init()
   endif
   return g:packager
 endfunction
+
+nnoremap <silent> <Plug>(PackagerQuit) :<C-u>call g:packager.quit()<CR>
+nnoremap <silent> <Plug>(PackagerOpenSha) :<C-u>call g:packager.open_sha()<CR>
+nnoremap <silent> <Plug>(PackagerOpenStdout) :<C-u>call g:packager.open_stdout()<CR>
+nnoremap <silent> <Plug>(PackagerGotoNextPlugin) :<C-u>call g:packager.goto_plugin('next')<CR>
+nnoremap <silent> <Plug>(PackagerGotoPrevPlugin) :<C-u>call g:packager.goto_plugin('previous')<CR>
+nnoremap <silent> <Plug>(PackagerStatus) :<C-u>call g:packager.status()<CR>
+nnoremap <silent> <Plug>(PackagerPluginDetails) :<C-u>call g:packager.open_plugin_details()<CR>

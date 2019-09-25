@@ -184,6 +184,25 @@ This removes unused plugins. It will ask for confirmation before proceeding.
 Confirmation allows selecting option to delete all folders from the list (default action),
 or ask for each folder if you want to delete it.
 
+## Configuration
+Several buffer mappings are added for packager buffer by default:
+
+* `q` - Close packager buffer (`<Plug>(PackagerQuit)`)
+* `<CR>` - Preview commit under cursor (`<Plug>(PackagerOpenSha)`)
+* `E` - Preview stdout of the installation process of plugin under cursor (`<Plug>(PackagerOpenStdout)`)
+* `<C-j>` - Jump to next plugin (`<Plug>(PackagerGotoNextPlugin)`)
+* `<C-k>` - Jump to previous plugin (`<Plug>(PackagerGotoPrevPlugin)`)
+* `D` - Go to status page (`<Plug>(PackagerStatus)`)
+* `O` - Open details of plugin under cursor (`<Plug>(PackagerPluginDetails)`)
+
+To use different mapping for any of these, create filetype autocmd with different mapping.
+
+For example, to use `<c-h>` instead of `<c-j>` for jumping to next plugin, add this to vimrc:
+
+```
+autocmd FileType packager nmap <buffer> <C-h> <Plug>(PackagerGotoNextPlugin)
+```
+
 ## Thanks to:
 
 * [@k-takata](https://github.com/k-takata) and his [minpac](https://github.com/k-takata/minpac) plugin for inspiration and parts of the code
