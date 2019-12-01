@@ -65,7 +65,7 @@ function! s:plugin.update_git_command() abort
   endif
 
   if l:is_on_branch
-    let l:update_cmd += ['&&', 'git', 'pull', '--ff-only', '--progress']
+    let l:update_cmd += ['&&', 'git', 'pull', '--ff-only', '--progress', '--rebase=false']
   else
     let l:update_cmd += ['&&', 'git', 'fetch', self.url]
   endif
