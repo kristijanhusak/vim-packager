@@ -6,6 +6,7 @@ let s:defaults = {
       \ 'depth': 5,
       \ 'jobs': 8,
       \ 'window_cmd': 'vertical topleft new',
+      \ 'spinner': ['⠲', '⠴', '⠦', '⠖'],
       \ }
 
 function! packager#new(opts) abort
@@ -251,14 +252,15 @@ function! s:packager.open_buffer() abort
     exe self.window_cmd '__packager__'
   endif
 
+  let l:progress_icons = join(map(copy(self.spinner), 'escape(v:val, "\\/")'), '\|')
   setf packager
   setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell
   syntax clear
   syn match packagerCheck /^✓/
-  syn match packagerPlus /^+/
+  silent! exe 'syn match packagerPlus /^\('.l:progress_icons.'\)/'
   syn match packagerX /^✗/
   syn match packagerStar /^\s\s\*/
-  syn match packagerStatus /\(^+.*—\)\@<=\s.*$/
+  silent! exe 'syn match packagerStatus /\(^\('.l:progress_icons.'\).*—\)\@<=\s.*$/'
   syn match packagerStatusSuccess /\(^✓.*—\)\@<=\s.*$/
   syn match packagerStatusError /\(^✗.*—\)\@<=\s.*$/
   syn match packagerStatusCommit /\(^\*.*—\)\@<=\s.*$/

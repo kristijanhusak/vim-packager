@@ -26,6 +26,7 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.main_branch = ''
   let l:instance.installed_now = 0
   let l:instance.line = 0
+  let l:instance.progress_counter = 0
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
   endif
@@ -35,11 +36,11 @@ endfunction
 function! s:plugin.get_initial_status(line) abort
   let self.rev = self.revision()
   let self.line = a:line
-  return packager#utils#status('progress', self.name, 'Initializing...')
+  return packager#utils#status('progress', self.name, 'Initializing...', self)
 endfunction
 
 function! s:plugin.update_status(status, text) abort
-  return packager#utils#setline(self.line, packager#utils#status(a:status, self.name, a:text))
+  return packager#utils#setline(self.line, packager#utils#status(a:status, self.name, a:text, self))
 endfunction
 
 function! s:plugin.update_git_command() abort

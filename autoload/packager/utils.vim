@@ -22,9 +22,35 @@ function! packager#utils#status_icons() abort
   return { 'ok': '✓', 'error': '✗', 'progress': '+' }
 endfunction
 
-function! packager#utils#status(icon, name, status_text) abort
+function! packager#utils#status(icon, name, status_text, ...) abort
+  let l:icon = packager#utils#get_icon(a:icon, a:000)
+  return printf('%s %s — %s', l:icon, a:name, a:status_text)
+endfunction
+
+function! packager#utils#get_icon(icon, args) abort
   let l:icons = packager#utils#status_icons()
-  return printf('%s %s — %s', l:icons[a:icon], a:name, a:status_text)
+  if a:icon !=? 'progress' || empty(a:args)
+    return l:icons[a:icon]
+  endif
+  let l:plugin = a:args[0]
+  let l:spinner = l:plugin.packager.spinner
+  let l:len = len(l:spinner) - 1
+  let l:progress = l:plugin.progress_counter
+
+  if l:len <= 0
+    return l:spinner[0]
+  endif
+
+  let l:icon = l:spinner[l:progress]
+  let l:progress += 1
+
+  if l:progress > l:len
+    let l:progress = 0
+  endif
+
+  let l:plugin.progress_counter = l:progress
+
+  return l:icon
 endfunction
 
 function! packager#utils#confirm(question) abort
