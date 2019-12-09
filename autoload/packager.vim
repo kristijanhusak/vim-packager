@@ -24,6 +24,7 @@ function! s:packager.new(opts) abort
   let l:instance.running_jobs = 0
   let l:instance.install_ran = 0
   let l:instance.update_ran = 0
+  let l:instance.icons_str = join(values(packager#utils#status_icons()), '')
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'opt'), 'p')
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'start'), 'p')
   return l:instance
@@ -55,10 +56,9 @@ function! s:packager.install(opts) abort
   let self.post_run_opts = a:opts
   call self.open_buffer()
   call self.update_top_status()
-  let l:initial_content = map(values(self.processed_plugins), 'v:val.get_initial_status(v:key + 4)')
-  call packager#utils#append(3, l:initial_content)
 
   for l:plugin in values(self.processed_plugins)
+    call packager#utils#append(3, l:plugin.get_initial_status())
     call self.start_job(l:plugin.command(self.depth), {
           \ 'handler': 's:stdout_handler',
           \ 'plugin': l:plugin,
@@ -82,10 +82,9 @@ function! s:packager.update(opts) abort
   let self.command_type = 'update'
   call self.open_buffer()
   call self.update_top_status()
-  let l:initial_content = map(values(self.processed_plugins), 'v:val.get_initial_status(v:key + 4)')
-  call packager#utils#append(3, l:initial_content)
 
   for l:plugin in values(self.processed_plugins)
+    call packager#utils#append(3, l:plugin.get_initial_status())
     call self.start_job(l:plugin.command(self.depth), {
           \ 'handler': 's:stdout_handler',
           \ 'plugin': l:plugin,
@@ -341,9 +340,8 @@ function! s:packager.find_plugin_by_sha(sha) abort
 endfunction
 
 function! s:packager.goto_plugin(dir) abort
-  let l:icons = join(values(packager#utils#status_icons()), '\|')
   let l:flag = a:dir ==? 'previous' ? 'b': ''
-  return search(printf('^\(%s\)\s.*$', l:icons), l:flag)
+  return search(printf('^[%s]\s.*$', self.icons_str), l:flag)
 endfunction
 
 function! s:packager.open_plugin_details() abort

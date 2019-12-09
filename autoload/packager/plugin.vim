@@ -25,21 +25,30 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.head_ref = ''
   let l:instance.main_branch = ''
   let l:instance.installed_now = 0
-  let l:instance.line = 0
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
   endif
   return l:instance
 endfunction
 
-function! s:plugin.get_initial_status(line) abort
+function! s:plugin.get_initial_status() abort
   let self.rev = self.revision()
-  let self.line = a:line
-  return packager#utils#status('progress', self.name, 'Initializing...')
+  let l:msg = self.installed ? 'Updating' : 'Installing'
+  return packager#utils#status('progress', self.name, l:msg.'...')
 endfunction
 
 function! s:plugin.update_status(status, text) abort
-  return packager#utils#setline(self.line, packager#utils#status(a:status, self.name, a:text))
+  let l:line = self.get_line()
+  return packager#utils#setline(l:line, packager#utils#status(a:status, self.name, a:text))
+endfunction
+
+function! s:plugin.get_line() abort
+  for l:line in range(4, line('$'))
+    if getline(l:line) =~# '^['.self.packager.icons_str.'] '.self.name
+      return l:line
+    endif
+  endfor
+  return 0
 endfunction
 
 function! s:plugin.update_git_command() abort
