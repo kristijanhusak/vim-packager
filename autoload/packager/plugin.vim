@@ -56,10 +56,7 @@ function! s:plugin.update_git_command() abort
     endif
   endfor
 
-  let self.head_ref = self.get_head_ref()
-  let self.main_branch = self.get_main_branch()
-
-  if !l:has_checkout && self.head_ref ==? 'HEAD' && !empty(self.main_branch)
+  if !l:has_checkout && self.get_head_ref() ==? 'HEAD' && !empty(self.get_main_branch())
     let l:is_on_branch = v:true
     let l:update_cmd += ['&&', 'git', 'checkout', self.main_branch]
   endif
@@ -142,21 +139,25 @@ function! s:plugin.revision() abort
 endfunction
 
 function! s:plugin.get_head_ref() abort
-  let l:head = get(packager#utils#system(['git', '-C', self.dir, 'rev-parse', '--abbrev-ref', 'HEAD']), 0, '')
-  if l:head =~? '^fatal'
-    return ''
+  if !empty(self.head_ref)
+    return self.head_ref
   endif
 
-  return l:head
+  let l:head = get(packager#utils#system(['git', '-C', self.dir, 'rev-parse', '--abbrev-ref', 'HEAD']), 0, '')
+  let self.head_ref = l:head =~? '^fatal' ? '' : l:head
+
+  return self.head_ref
 endfunction
 
 function! s:plugin.get_main_branch() abort
-  let l:ref = get(packager#utils#system(['git', '-C', self.dir, 'symbolic-ref', 'refs/remotes/origin/HEAD']), 0, '')
-  if l:ref =~? '^fatal'
-    return ''
+  if !empty(self.main_branch)
+    return self.main_branch
   endif
 
-  return split(l:ref, '/')[-1]
+  let l:ref = get(packager#utils#system(['git', '-C', self.dir, 'symbolic-ref', 'refs/remotes/origin/HEAD']), 0, '')
+  let self.main_branch = l:ref =~? '^fatal' ? '' : split(l:ref, '/')[-1]
+
+  return self.main_branch
 endfunction
 
 function! s:plugin.update_install_status() abort
