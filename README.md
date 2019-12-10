@@ -27,10 +27,10 @@ You can easily loose track what's happening in the process, and echoing causes a
 ## Requirement
 * Neovim 0.20+ OR Vim 8.0.0902+
 * Git
-* Windows, Linux, macOS (Not tested)
+* Windows, Linux, macOS
 
 ## Installation
-
+### Mac/Linux
 #### Vim
 ```sh
 git clone https://github.com/kristijanhusak/vim-packager ~/.vim/pack/packager/opt/vim-packager
@@ -39,6 +39,17 @@ git clone https://github.com/kristijanhusak/vim-packager ~/.vim/pack/packager/op
 #### Neovim
 ```sh
 git clone https://github.com/kristijanhusak/vim-packager ~/.config/nvim/pack/packager/opt/vim-packager
+```
+
+### Windows
+#### Vim
+```sh
+git clone https://github.com/kristijanhusak/vim-packager ~/vimfiles/pack/packager/opt/vim-packager
+```
+
+#### Neovim
+```sh
+git clone https://github.com/kristijanhusak/vim-packager ~/AppData/Local/nvim/pack/packager/opt/vim-packager
 ```
 
 #### Vimrc content
