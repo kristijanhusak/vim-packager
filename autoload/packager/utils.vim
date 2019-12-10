@@ -6,6 +6,48 @@ function! packager#utils#system(cmds) abort
   return l:cmd_output
 endfunction
 
+function! packager#utils#system_async(cmds, self, key, ...) abort
+  let l:args = a:0 > 0 ? a:1 : {}
+  let l:save_shell = packager#utils#set_shell()
+  let l:opts = {
+        \ 'out': [],
+        \ 'key': a:key,
+        \ 'all': !empty(get(l:args, 'all')),
+        \ 'formatter': get(l:args, 'formatter'),
+        \ }
+  let l:job = packager#job#start(join(a:cmds, ' '), {
+        \ 'on_stdout': function('s:on_stdout', [l:opts], a:self),
+        \ 'on_stderr': function('s:on_stdout', [l:opts], a:self),
+        \ 'on_exit': function('s:on_stdout', [l:opts], a:self),
+        \ })
+
+  call packager#utils#restore_shell(l:save_shell)
+
+  if l:job <= 0
+    let a:self[a:key] = l:opts.all ? [] : ''
+  endif
+endfunction
+
+function! s:on_stdout(opts, id, message, event) dict abort
+  if a:event ==? 'exit'
+    if a:opts.all
+      let self[a:opts.key] = a:opts.out
+    else
+      let self[a:opts.key] = get(a:opts.out, 0, '')
+    endif
+
+    if !empty(a:opts.formatter)
+      let self[a:opts.key] = a:opts.formatter(self[a:opts.key])
+    endif
+    return a:opts
+  endif
+
+  let l:msg = type(a:message) ==? type('') ? [a:message]  : a:message
+  for l:msg in a:message
+    call add(a:opts.out, l:msg)
+  endfor
+endfunction
+
 function! packager#utils#status_ok(name, status_text) abort
   return packager#utils#status('ok', a:name, a:status_text)
 endfunction

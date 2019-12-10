@@ -97,11 +97,7 @@ function! s:packager.clean() abort
   let l:folders = glob(printf('%s%s*%s*', self.dir, s:slash, s:slash), 0, 1)
   let self.processed_plugins = copy(self.plugins)
   let l:plugins = values(map(copy(self.processed_plugins), 'substitute(v:val.dir, ''\(\\\|\/\)'', s:slash, ''g'')'))
-  function! s:clean_filter(plugins, key, val) abort
-    return index(a:plugins, a:val) < 0
-  endfunction
-
-  let l:to_clean = filter(copy(l:folders), function('s:clean_filter', [l:plugins]))
+  let l:to_clean = filter(copy(l:folders), {key, val -> index(l:plugins, val) < 0})
 
   if len(l:to_clean) <=? 0
     echo 'Already clean.'
