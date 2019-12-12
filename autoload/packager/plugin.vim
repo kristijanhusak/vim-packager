@@ -1,5 +1,6 @@
 scriptencoding utf8
 let s:plugin = {}
+let s:is_windows = has('win32')
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = { 'name': '', 'type': 'start', 'branch': '', 'commit': '', 'tag': '',
       \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'frozen': 0 }
@@ -27,14 +28,19 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.installed_now = 0
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
-    call l:instance.revision('async')
-    call l:instance.get_head_ref()
-    call l:instance.get_main_branch()
+    if s:is_windows
+      call l:instance.revision('async')
+      call l:instance.get_head_ref('async')
+      call l:instance.get_main_branch('async')
+    endif
   endif
   return l:instance
 endfunction
 
 function! s:plugin.get_initial_status() abort
+  if !s:is_windows
+    let self.rev = self.revision()
+  endif
   let l:msg = self.installed ? 'Updating' : 'Installing'
   return packager#utils#status('progress', self.name, l:msg.'...')
 endfunction
@@ -67,7 +73,7 @@ function! s:plugin.update_git_command() abort
     endif
   endfor
 
-  if !l:has_checkout && self.head_ref ==? 'HEAD' && !empty(self.main_branch)
+  if !l:has_checkout && self.get_head_ref() ==? 'HEAD' && !empty(self.get_main_branch())
     let l:is_on_branch = v:true
     let l:update_cmd += ['&&', 'git', 'checkout', self.main_branch]
   endif
@@ -138,7 +144,7 @@ function! s:plugin.get_last_update(...) abort
         \ '--color=never', '--pretty=format:"%h %s (%cr)"', '--no-show-signature', 'HEAD@{1}..'
         \ ]
 
-  if a:0 > 0 && a:1 ==? 'async'
+  if a:0 > 0 && a:1 ==? 'async' && s:is_windows
     return packager#utils#system_async(l:cmd, self, 'last_update', {
           \ 'all': v:true,
           \ 'formatter': {val -> filter(val, 'v:val !=? "" && v:val !~? "^fatal"')}
@@ -163,13 +169,39 @@ function! s:plugin.revision(...) abort
   return l:rev
 endfunction
 
-function! s:plugin.get_head_ref() abort
-  return packager#utils#system_async(['git', '-C', self.dir, 'rev-parse', '--abbrev-ref', 'HEAD'], self, 'head_ref')
+function! s:plugin.get_head_ref(...) abort
+  if !empty(self.head_ref)
+    return self.head_ref
+  endif
+
+  let l:cmd = ['git', '-C', self.dir, 'rev-parse', '--abbrev-ref', 'HEAD']
+
+  if a:0 > 0 && a:1 ==? 'async'
+    return packager#utils#system_async(l:cmd, self, 'head_ref')
+  endif
+
+  let l:head = get(packager#utils#system(l:cmd), 0, '')
+  let self.head_ref = l:head =~? '^fatal' ? '' : l:head
+
+  return self.head_ref
 endfunction
 
-function! s:plugin.get_main_branch() abort
-  return packager#utils#system_async(['git', '-C', self.dir, 'symbolic-ref', 'refs/remotes/origin/HEAD'], self, 'main_branch', {
+function! s:plugin.get_main_branch(...) abort
+  if !empty(self.main_branch)
+    return self.main_branch
+  endif
+
+  let l:cmd = ['git', '-C', self.dir, 'symbolic-ref', 'refs/remotes/origin/HEAD']
+
+  if a:0 > 0 && a:1 ==? 'async'
+    return packager#utils#system_async(l:cmd, self, 'main_branch', {
         \ 'formatter': {val -> get(split(val, '/'), -1, '')} })
+  endif
+
+  let l:ref = get(packager#utils#system(l:cmd), 0, '')
+  let self.main_branch = l:ref =~? '^fatal' ? '' : get(split(l:ref, '/') -1, '')
+
+  return self.main_branch
 endfunction
 
 function! s:plugin.update_install_status() abort
