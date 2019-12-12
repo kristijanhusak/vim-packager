@@ -43,6 +43,7 @@ function! s:packager.local(name, opts) abort
 endfunction
 
 function! s:packager.install(opts) abort
+  let self.start_time = reltime()
   let self.result = []
   let self.processed_plugins = filter(copy(self.plugins), 'v:val.installed ==? 0')
   let self.remaining_jobs = len(self.processed_plugins)
@@ -68,6 +69,7 @@ function! s:packager.install(opts) abort
 endfunction
 
 function! s:packager.update(opts) abort
+  let self.start_time = reltime()
   let self.result = []
   let self.processed_plugins = filter(copy(self.plugins), 'v:val.frozen ==? 0')
   let self.remaining_jobs = len(self.processed_plugins)
@@ -199,7 +201,7 @@ function! s:packager.update_top_status() abort
   let l:bar = printf('[%s%s]', repeat('=', l:bar_installed), repeat('-', l:bar_left))
 
   let l:install_text = self.remaining_jobs > 0 ? 'Installing' : 'Installed'
-  let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished!'
+  let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished after '.split(reltimestr(reltime(self.start_time)))[0].' sec!'
   call packager#utils#setline(1, printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished))
   call packager#utils#setline(2, l:bar)
   return packager#utils#setline(3, '')
