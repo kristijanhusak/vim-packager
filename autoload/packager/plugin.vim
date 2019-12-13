@@ -60,7 +60,11 @@ function! s:plugin.get_line() abort
 endfunction
 
 function! s:plugin.update_git_command() abort
-  let l:update_cmd = ['cd', self.dir]
+  let l:update_cmd = ['cd']
+  if s:is_windows
+    let l:update_cmd += ['/d']
+  endif
+  let l:update_cmd += [self.dir]
   let l:has_checkout = v:false
   let l:is_on_branch = v:true
 
@@ -101,8 +105,11 @@ function! s:plugin.install_git_command(depth) abort
     endfor
   endif
 
-  let l:clone_cmd += ['&&', 'cd', self.dir]
-  let l:clone_cmd += ['&&', 'git', 'submodule', 'update', '--init', '--recursive', '--progress']
+  let l:clone_cmd += ['&&', 'cd']
+  if s:is_windows
+    let l:clone_cmd += ['/d']
+  endif
+  let l:clone_cmd += [self.dir, '&&', 'git', 'submodule', 'update', '--init', '--recursive', '--progress']
 
   if !empty(self.commit)
     let l:clone_cmd += ['&&', 'git', 'checkout', self.commit]
