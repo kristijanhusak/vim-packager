@@ -159,8 +159,9 @@ function! s:plugin.get_last_update(...) abort
   endif
 
   let l:commits = packager#utils#system(l:cmd)
+  let self.last_update = filter(l:commits, 'v:val !=? "" && v:val !~? "^fatal"')
 
-  return filter(l:commits, 'v:val !=? "" && v:val !~? "^fatal"')
+  return self.last_update
 endfunction
 
 function! s:plugin.revision(...) abort
@@ -310,7 +311,7 @@ function! s:plugin.get_content_for_status() abort
   endif
 
   if !self.updated
-    let self.last_update = self.get_last_update()
+    call self.get_last_update()
   endif
 
   if empty(self.last_update)
