@@ -156,3 +156,15 @@ endfunction
 function! packager#utils#setline(line, content) abort
   return s:add_line(a:line, a:content, 'setline')
 endfunction
+
+function! packager#utils#symlink(from, to) abort
+  if executable('ln')
+    return ['ln', '-sf', a:from, a:to]
+  endif
+
+  if has('win32') && executable('mklink')
+    return ['mklink', a:from, a:to]
+  endif
+
+  return []
+endfunction

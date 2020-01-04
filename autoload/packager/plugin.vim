@@ -3,7 +3,7 @@ let s:plugin = {}
 let s:is_windows = has('win32')
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = { 'name': '', 'type': 'start', 'branch': '', 'commit': '', 'tag': '',
-      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'frozen': 0 }
+      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'frozen': 0, 'rtp': '' }
 
 function! packager#plugin#new(name, opts, packager) abort
   return s:plugin.new(a:name, a:opts, a:packager)
@@ -15,6 +15,9 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.name = !empty(l:instance.name) ? l:instance.name : split(a:name, '/')[-1]
   let l:instance.dir = printf('%s%s%s%s%s', a:packager.dir, s:slash, l:instance.type, s:slash, l:instance.name)
   let l:instance.local = get(l:instance, 'local', 0)
+  let l:instance.rtp_dir = !empty(l:instance.rtp)
+        \ ? printf('%s__%s', l:instance.dir, substitute(l:instance.rtp, '[\\\/]$', '', ''))
+        \ : ''
   let l:instance.url = a:name =~? '^\(http\|git@\).*'
         \ ? a:name
         \ : l:instance.local ? a:name : printf('https://github.com/%s', a:name)
@@ -119,12 +122,10 @@ function! s:plugin.install_git_command(depth) abort
 endfunction
 
 function! s:plugin.local_command() abort
-  if executable('ln')
-    return ['ln', '-sf', fnamemodify(self.url, ':p'), self.dir]
-  endif
+  let l:cmd = packager#utils#symlink(fnamemodify(self.url, ':p'), self.dir)
 
-  if has('win32') && executable('mklink')
-    return ['mklink', fnamemodify(self.url, ':p'), self.dir]
+  if !empty(l:cmd)
+    return l:cmd
   endif
 
   return ['echo', printf('Cannot install %s locally, linking tool not found.', self.name)]
@@ -212,17 +213,34 @@ function! s:plugin.get_main_branch(...) abort
   return self.main_branch
 endfunction
 
+function! s:plugin.symlink_rtp() abort
+  if empty(self.rtp_dir)
+    return 0
+  endif
+
+  let l:dir = printf('%s/%s', self.dir, self.rtp)
+  let l:symlink_cmd = packager#utils#symlink(l:dir, self.rtp_dir)
+
+  if !empty(l:symlink_cmd)
+    return packager#utils#system(l:symlink_cmd)
+  endif
+
+  return 0
+endfunction
+
 function! s:plugin.update_install_status() abort
   if !self.installed
     let self.installed = 1
     let self.updated = 1
     let self.installed_now = 1
+    call self.symlink_rtp()
     return 'Installed!'
   endif
 
   if self.has_updates()
     let self.updated = 1
     call self.get_last_update('async')
+    call self.symlink_rtp()
     return 'Updated!'
   endif
 

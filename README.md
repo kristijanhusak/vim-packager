@@ -76,6 +76,7 @@ function! PackagerInit() abort
   call packager#add('fatih/vim-go', { 'do': ':GoInstallBinaries', 'type': 'opt' })
   call packager#add('phpactor/phpactor', { 'do': 'composer install', 'type': 'opt' })
   call packager#add('neoclide/coc.nvim', { 'do': function('InstallCoc') })
+  call packager#add('sonph/onehalf', {'rtp': 'vim/'})
 endfunction
 
 function! InstallCoc(plugin) abort
@@ -126,6 +127,8 @@ Options:
 where plugins that are auto loaded goes to `start` folder. Default: `start`
 * `branch` - git branch to use. Default: '' (Uses the default from the repository, usually master)
 * `tag` - git tag to use. Default: ''
+* `rtp` - Used in case when subdirectory contains vim plugin. Creates a symbolink link from subdirectory to the packager folder.
+If `type` of package is `opt` use `packadd {packagename}__{rtp}` to load it (example: `packadd onehalf__vim`)
 * `commit` - exact git commit to use. Default: '' (Check below for priority explanation)
 * `do` - Hook to run after plugin is installed/updated: Default: ''
 * `frozen` - When plugin is frozen, it is not being updated. Default: 0
