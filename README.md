@@ -66,6 +66,7 @@ function! PackagerInit() abort
   call packager#add('kristijanhusak/vim-packager', { 'type': 'opt' })
   call packager#add('junegunn/fzf', { 'do': './install --all && ln -s $(pwd) ~/.fzf'})
   call packager#add('junegunn/fzf.vim')
+  call packager#add('vimwiki/vimwiki', { 'type': 'opt' })
   call packager#add('Shougo/deoplete.nvim')
   call packager#add('autozimu/LanguageClient-neovim', { 'do': 'bash install.sh' })
   call packager#add('morhetz/gruvbox')
@@ -96,6 +97,9 @@ augroup packager_filetype
   autocmd FileType go packadd vim-go
   autocmd FileType php packadd phpactor
 augroup END
+
+"Lazy load plugins with a mapping
+nnoremap <silent><Leader>ww :unmap <Leader>ww<BAR>packadd vimwiki<BAR>VimwikiIndex<CR>
 ```
 
 After that, reload vimrc, and run `:PackagerInstall`. It will install all the plugins and run it's hooks.
