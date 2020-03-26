@@ -259,6 +259,7 @@ function! s:packager.open_buffer() abort
   syntax clear
   syn match packagerCheck /^✓/
   syn match packagerPlus /^+/
+  syn match packagerPlusText /\(^+\s\)\@<=[^ —]*/
   syn match packagerX /^✗/
   syn match packagerStar /^\s\s\*/
   syn match packagerStatus /\(^+.*—\)\@<=\s.*$/
@@ -270,6 +271,7 @@ function! s:packager.open_buffer() abort
   syn match packagerProgress /\(\[\)\@<=[\=]*/
 
   hi def link packagerPlus           Special
+  hi def link packagerPlusText       String
   hi def link packagerCheck          Function
   hi def link packagerX              WarningMsg
   hi def link packagerStar           Boolean
