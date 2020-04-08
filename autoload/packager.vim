@@ -6,6 +6,7 @@ let s:defaults = {
       \ 'depth': 5,
       \ 'jobs': 8,
       \ 'window_cmd': 'vertical topleft new',
+      \ 'default_plugin_type': 'start',
       \ }
 
 function! packager#new(opts) abort

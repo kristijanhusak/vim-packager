@@ -118,6 +118,7 @@ Available options:
 * `jobs` - Maximum number of jobs that can run at same time. `0` is treated as unlimited. Default: `8`
 * `dir` - Directory to use for installation. By default uses `&packpath` value, which is `~/.vim/pack/packager` in Vim, and `~/.config/nvim/pack/packager` in Neovim.
 * `window_cmd` - What command to use to open packager window. Default: `vertical topleft new`
+* `default_plugin_type` - Default `type` option for plugins where it's not provided. More info below in `packager#add` options. Default: `start`
 
 #### packager#add(name, options)
 

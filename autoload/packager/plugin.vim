@@ -2,7 +2,7 @@ scriptencoding utf8
 let s:plugin = {}
 let s:is_windows = has('win32')
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
-let s:defaults = { 'name': '', 'type': 'start', 'branch': '', 'commit': '', 'tag': '',
+let s:defaults = { 'name': '', 'branch': '', 'commit': '', 'tag': '',
       \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'frozen': 0, 'rtp': '' }
 
 function! packager#plugin#new(name, opts, packager) abort
@@ -11,6 +11,12 @@ endfunction
 
 function! s:plugin.new(name, opts, packager) abort
   let l:instance = extend(copy(self), extend(copy(get(a:opts, 0, {})), s:defaults, 'keep'))
+  if !has_key(l:instance, 'type') || empty(l:instance.type)
+    let l:instance.type = a:packager.default_plugin_type
+  endif
+  if index(['opt', 'start'], l:instance.type) <= -1
+    let l:instance.type = 'start'
+  endif
   let l:instance.packager = a:packager
   let l:instance.name = !empty(l:instance.name) ? l:instance.name : split(a:name, '/')[-1]
   let l:instance.dir = printf('%s%s%s%s%s', a:packager.dir, s:slash, l:instance.type, s:slash, l:instance.name)
