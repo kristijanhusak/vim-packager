@@ -75,7 +75,6 @@ function! PackagerInit() abort
   "Loaded only for specific filetypes on demand. Requires autocommands below.
   call packager#add('kristijanhusak/vim-js-file-import', { 'do': 'npm install', 'type': 'opt' })
   call packager#add('fatih/vim-go', { 'do': ':GoInstallBinaries', 'type': 'opt' })
-  call packager#add('phpactor/phpactor', { 'do': 'composer install', 'type': 'opt' })
   call packager#add('neoclide/coc.nvim', { 'do': function('InstallCoc') })
   call packager#add('sonph/onehalf', {'rtp': 'vim/'})
 endfunction
@@ -91,11 +90,12 @@ command! PackagerClean call PackagerInit() | call packager#clean()
 command! PackagerStatus call PackagerInit() | call packager#status()
 
 "Load plugins only for specific filetype
+"Note that this should not be done for plugins that handle their loading using ftplugin file. 
+"More info in :help pack-add
 augroup packager_filetype
   autocmd!
   autocmd FileType javascript packadd vim-js-file-import
   autocmd FileType go packadd vim-go
-  autocmd FileType php packadd phpactor
 augroup END
 
 "Lazy load plugins with a mapping
