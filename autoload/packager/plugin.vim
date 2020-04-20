@@ -214,7 +214,7 @@ function! s:plugin.get_main_branch(...) abort
   endif
 
   let l:ref = get(packager#utils#system(l:cmd), 0, '')
-  let self.main_branch = l:ref =~? '^fatal' ? '' : get(split(l:ref, '/') -1, '')
+  let self.main_branch = l:ref =~? '^fatal' ? '' : get(split(l:ref, '/'), -1, '')
 
   return self.main_branch
 endfunction
