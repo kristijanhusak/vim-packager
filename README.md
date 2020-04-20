@@ -52,7 +52,7 @@ git clone https://github.com/kristijanhusak/vim-packager ~/vimfiles/pack/package
 git clone https://github.com/kristijanhusak/vim-packager ~/AppData/Local/nvim/pack/packager/opt/vim-packager
 ```
 
-#### Vimrc content
+#### Example .vimrc content
 
 ```vimL
 if &compatible
@@ -71,6 +71,12 @@ function! PackagerInit() abort
   call packager#add('autozimu/LanguageClient-neovim', { 'do': 'bash install.sh' })
   call packager#add('morhetz/gruvbox')
   call packager#local('~/my_vim_plugins/my_awesome_plugin')
+  
+  "Provide full URL; useful if you want to clone from somewhere else than Github.
+  call packager#add('https://my.other.public.git/tpope/vim-fugitive.git')
+  
+  "Provide SSH-based URL; useful if you have write access to a repository and wish to push to it
+  call packager#add('git@github.com:mygithubid/myrepo.git')
 
   "Loaded only for specific filetypes on demand. Requires autocommands below.
   call packager#add('kristijanhusak/vim-js-file-import', { 'do': 'npm install', 'type': 'opt' })
