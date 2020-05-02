@@ -61,7 +61,7 @@ endfunction
 
 function! s:plugin.get_line() abort
   for l:line in range(4, line('$'))
-    if getline(l:line) =~# '^['.self.packager.icons_str.'] '.self.name
+    if getline(l:line) =~# '^['.self.packager.icons_str.'] '.self.name.'\s—'
       return l:line
     endif
   endfor
