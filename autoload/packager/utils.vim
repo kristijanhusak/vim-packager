@@ -1,4 +1,7 @@
 scriptencoding utf8
+let s:progress = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+let s:progress_counter = 0
+
 function! packager#utils#system(cmds) abort
   let l:save_shell = packager#utils#set_shell()
   let l:cmd_output = systemlist(join(a:cmds, ' '))
@@ -61,12 +64,25 @@ function! packager#utils#status_error(name, status_text) abort
 endfunction
 
 function! packager#utils#status_icons() abort
-  return { 'ok': '✓', 'error': '✗', 'progress': '+' }
+  return {
+        \ 'ok': '✓',
+        \ 'error': '✗',
+        \ 'waiting': '+',
+        \ 'progress': join(s:progress, ''),
+        \ }
 endfunction
 
 function! packager#utils#status(icon, name, status_text) abort
   let l:icons = packager#utils#status_icons()
-  return printf('%s %s — %s', l:icons[a:icon], a:name, a:status_text)
+  let l:icon = l:icons[a:icon]
+  if a:icon ==? 'progress'
+    let l:icon = s:progress[s:progress_counter]
+    let s:progress_counter += 1
+    if s:progress_counter >= len(s:progress) - 1
+      let s:progress_counter = 0
+    endif
+  endif
+  return printf('%s %s — %s', l:icon, a:name, a:status_text)
 endfunction
 
 function! packager#utils#confirm(question) abort
@@ -132,7 +148,7 @@ function! packager#utils#load_plugin(plugin) abort
   endfor
 endfunction
 
-function! s:add_line(line, content, method) abort
+function! packager#utils#setline(line, content) abort
   let l:packager_bufnr = bufnr('__packager_')
   let l:current_bufnr = bufnr('')
 
@@ -141,20 +157,12 @@ function! s:add_line(line, content, method) abort
   endif
 
   if l:packager_bufnr ==? l:current_bufnr
-    return call(a:method, [a:line, a:content])
+    return setline(a:line, a:content)
   endif
 
   silent! exe printf('%wincmd w', l:packager_bufnr)
-  call call(a:method, [a:line, a:content])
+  call setline(a:line, a:content)
   silent! exe printf('%wincmd w', l:current_bufnr)
-endfunction
-
-function! packager#utils#append(line, content) abort
-  return s:add_line(a:line, a:content, 'append')
-endfunction
-
-function! packager#utils#setline(line, content) abort
-  return s:add_line(a:line, a:content, 'setline')
 endfunction
 
 function! packager#utils#symlink(from, to) abort

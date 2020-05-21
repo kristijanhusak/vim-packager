@@ -35,6 +35,8 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.head_ref = ''
   let l:instance.main_branch = ''
   let l:instance.installed_now = 0
+  let l:instance.status = ''
+  let l:instance.status_msg = ''
   if isdirectory(l:instance.dir)
     let l:instance.installed = 1
     if s:is_windows
@@ -46,26 +48,18 @@ function! s:plugin.new(name, opts, packager) abort
   return l:instance
 endfunction
 
-function! s:plugin.get_initial_status() abort
+function! s:plugin.queue() abort
   if !s:is_windows
     let self.rev = self.revision()
   endif
-  let l:msg = self.installed ? 'Updating' : 'Installing'
-  return packager#utils#status('progress', self.name, l:msg.'...')
+
+  let l:msg = self.installed ? 'Updating...' : 'Installing...'
+  return self.set_status('progress', l:msg)
 endfunction
 
-function! s:plugin.update_status(status, text) abort
-  let l:line = self.get_line()
-  return packager#utils#setline(l:line, packager#utils#status(a:status, self.name, a:text))
-endfunction
-
-function! s:plugin.get_line() abort
-  for l:line in range(4, line('$'))
-    if getline(l:line) =~# '^['.self.packager.icons_str.'] '.self.name.'\s—'
-      return l:line
-    endif
-  endfor
-  return 0
+function! s:plugin.set_status(status, status_msg) abort
+  let self.status = a:status
+  let self.status_msg = a:status_msg
 endfunction
 
 function! s:plugin.update_git_command() abort

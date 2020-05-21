@@ -1,6 +1,7 @@
 scriptencoding utf8
 let s:packager = {}
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
+let s:has_timers = has('timers')
 let s:defaults = {
       \ 'dir': printf('%s%s%s', substitute(split(&packpath, ',')[0], '\(\\\|\/\)', s:slash, 'g'), s:slash, 'pack'.s:slash.'packager'),
       \ 'depth': 5,
@@ -20,12 +21,14 @@ function! s:packager.new(opts) abort
     let l:instance.dir = substitute(fnamemodify(a:opts.dir, ':p'), '\'.s:slash.'$', '', '')
   endif
   let l:instance.plugins = {}
-  let l:instance.processed_plugins = {}
+  let l:instance.processed_plugins = []
   let l:instance.remaining_jobs = 0
   let l:instance.running_jobs = 0
   let l:instance.install_ran = 0
   let l:instance.update_ran = 0
   let l:instance.icons_str = join(values(packager#utils#status_icons()), '')
+  let l:instance.timer = -1
+  let l:instance.last_render_time = reltime()
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'opt'), 'p')
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'start'), 'p')
   return l:instance
@@ -46,7 +49,7 @@ endfunction
 function! s:packager.install(opts) abort
   let self.start_time = reltime()
   let self.result = []
-  let self.processed_plugins = filter(copy(self.plugins), 'v:val.installed ==? 0')
+  let self.processed_plugins = filter(values(self.plugins), 'v:val.installed ==? 0')
   let self.remaining_jobs = len(self.processed_plugins)
 
   if self.remaining_jobs ==? 0
@@ -57,10 +60,14 @@ function! s:packager.install(opts) abort
   let self.install_ran = 1
   let self.post_run_opts = a:opts
   call self.open_buffer()
-  call self.update_top_status()
+  if s:has_timers
+    let self.timer = timer_start(100, {timer->self.render()}, { 'repeat': -1 })
+  else
+    call self.render_if_no_timers()
+  endif
 
-  for l:plugin in values(self.processed_plugins)
-    call packager#utils#append(3, l:plugin.get_initial_status())
+  for l:plugin in self.processed_plugins
+    call l:plugin.queue()
     call self.start_job(l:plugin.command(self.depth), {
           \ 'handler': 's:stdout_handler',
           \ 'plugin': l:plugin,
@@ -72,7 +79,7 @@ endfunction
 function! s:packager.update(opts) abort
   let self.start_time = reltime()
   let self.result = []
-  let self.processed_plugins = filter(copy(self.plugins), 'v:val.frozen ==? 0')
+  let self.processed_plugins = filter(values(self.plugins), 'v:val.frozen ==? 0')
   let self.remaining_jobs = len(self.processed_plugins)
 
   if self.remaining_jobs ==? 0
@@ -84,10 +91,14 @@ function! s:packager.update(opts) abort
   let self.post_run_opts = a:opts
   let self.command_type = 'update'
   call self.open_buffer()
-  call self.update_top_status()
+  if s:has_timers
+    let self.timer = timer_start(100, {timer->self.render()}, { 'repeat': -1 })
+  else
+    call self.render_if_no_timers()
+  endif
 
-  for l:plugin in values(self.processed_plugins)
-    call packager#utils#append(3, l:plugin.get_initial_status())
+  for l:plugin in self.processed_plugins
+    call l:plugin.queue()
     call self.start_job(l:plugin.command(self.depth), {
           \ 'handler': 's:stdout_handler',
           \ 'plugin': l:plugin,
@@ -98,9 +109,9 @@ endfunction
 
 function! s:packager.clean() abort
   let l:folders = glob(printf('%s%s*%s*', self.dir, s:slash, s:slash), 0, 1)
-  let self.processed_plugins = copy(self.plugins)
+  let self.processed_plugins = values(self.plugins)
   let l:plugins = []
-  for l:plugin in values(self.processed_plugins)
+  for l:plugin in self.processed_plugins
     call add(l:plugins, l:plugin.dir)
     if !empty(l:plugin.rtp_dir)
       call add(l:plugins, l:plugin.rtp_dir)
@@ -119,7 +130,7 @@ function! s:packager.clean() abort
 
   let l:index = 3
   for l:item in l:to_clean
-    call add(l:content, packager#utils#status_progress(l:item, 'Waiting for confirmation...'))
+    call add(l:content, packager#utils#status('waiting', l:item, 'Waiting for confirmation...'))
     let l:lines[l:item] = l:index
     let l:index += 1
   endfor
@@ -157,15 +168,15 @@ function! s:packager.status() abort
   endif
   let l:result = []
   if self.install_ran
-    let self.processed_plugins = filter(copy(self.plugins), 'v:val.installed_now ==? 1')
+    let self.processed_plugins = filter(values(self.plugins), 'v:val.installed_now ==? 1')
   elseif self.update_ran
-    let self.processed_plugins = filter(copy(self.plugins), 'v:val.updated ==? 1')
+    let self.processed_plugins = filter(values(self.plugins), 'v:val.updated ==? 1')
   else
-    let self.processed_plugins = copy(self.plugins)
+    let self.processed_plugins = values(self.plugins)
   endif
   let l:has_errors = 0
 
-  for l:plugin in values(self.processed_plugins)
+  for l:plugin in self.processed_plugins
     let l:plugin_status = l:plugin.get_content_for_status()
 
     for l:status_line in l:plugin_status
@@ -195,31 +206,16 @@ function! s:packager.quit() abort
       return
     endif
   endif
+  call timer_stop(self.timer)
   silent exe ':q!'
 endfunction
 
-function! s:packager.update_top_status() abort
-  let l:bar_length = 50
-  let l:total = len(self.processed_plugins)
-  let l:installed = l:total - self.remaining_jobs
-
-  let l:bar_installed = float2nr(floor(str2float(l:bar_length) / str2float(l:total) * str2float(l:installed)))
-  let l:bar_left = l:bar_length - l:bar_installed
-  let l:bar = printf('[%s%s]', repeat('=', l:bar_installed), repeat('-', l:bar_left))
-
-  let l:install_text = self.remaining_jobs > 0 ? 'Installing' : 'Installed'
-  let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished after '.split(reltimestr(reltime(self.start_time)))[0].' sec!'
-  call packager#utils#setline(1, printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished))
-  call packager#utils#setline(2, l:bar)
-  return packager#utils#setline(3, '')
-endfunction
-
-function! s:packager.update_top_status_installed() abort
+function! s:packager.update_running_jobs() abort
   let self.remaining_jobs -= 1
   let self.remaining_jobs = max([0, self.remaining_jobs]) "Make sure it's not negative
   let self.running_jobs -= 1
   let self.running_jobs = max([0, self.running_jobs]) "Make sure it's not negative
-  return self.update_top_status()
+  call self.render_if_no_timers()
 endfunction
 
 function! s:packager.run_post_update_hooks() abort
@@ -229,14 +225,9 @@ function! s:packager.run_post_update_hooks() abort
 
   let self.post_run_hooks_called = 1
 
-  call packager#utils#append('$', '')
-  call packager#utils#append('$', "Press 'D' to view latest updates.")
-  call packager#utils#append('$', "Press 'O' on plugin to open plugin details.")
-  call packager#utils#append('$', "Press 'E' on a plugin line to see stdout in preview window.")
-  call packager#utils#append('$', "Press 'q' to quit this buffer.")
-  call setbufvar('__packager__', '&modifiable', 0)
-
   call self.update_remote_plugins_and_helptags()
+
+  call self.render_if_no_timers(1)
 
   if has_key(self, 'post_run_opts') && has_key(self.post_run_opts, 'on_finish')
     silent! exe 'redraw'
@@ -259,11 +250,11 @@ function! s:packager.open_buffer() abort
   setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap cursorline nospell
   syntax clear
   syn match packagerCheck /^✓/
-  syn match packagerPlus /^+/
-  syn match packagerPlusText /\(^+\s\)\@<=[^ —]*/
+  silent! exe 'syn match packagerPlus /^[+'.packager#utils#status_icons().progress.']/'
+  silent! exe 'syn match packagerPlusText /\(^[+'.packager#utils#status_icons().progress.']\s\)\@<=[^ —]*/'
   syn match packagerX /^✗/
   syn match packagerStar /^\s\s\*/
-  syn match packagerStatus /\(^+.*—\)\@<=\s.*$/
+  silent! exe 'syn match packagerStatus /\(^[+'.packager#utils#status_icons().progress.'].*—\)\@<=\s.*$/'
   syn match packagerStatusSuccess /\(^✓.*—\)\@<=\s.*$/
   syn match packagerStatusError /\(^✗.*—\)\@<=\s.*$/
   syn match packagerStatusCommit /\(^\*.*—\)\@<=\s.*$/
@@ -285,6 +276,64 @@ function! s:packager.open_buffer() abort
   hi def link packagerProgress       Boolean
 
   call self.add_mappings()
+endfunction
+
+function! s:packager.get_top_status() abort
+  let l:bar_length = 50
+  let l:total = len(self.processed_plugins)
+  let l:installed = l:total - self.remaining_jobs
+
+  let l:bar_installed = float2nr(floor(str2float(l:bar_length) / str2float(l:total) * str2float(l:installed)))
+  let l:bar_left = l:bar_length - l:bar_installed
+  let l:bar = printf('[%s%s]', repeat('=', l:bar_installed), repeat('-', l:bar_left))
+
+  let l:install_text = self.remaining_jobs > 0 ? 'Installing' : 'Installed'
+  let l:finished = self.remaining_jobs > 0 ? '' : ' - Finished after '.split(reltimestr(reltime(self.start_time)))[0].' sec!'
+  return [
+        \ printf('%s plugins %d / %d%s', l:install_text, l:installed, l:total, l:finished),
+        \ l:bar,
+        \ '',
+        \ ]
+endfunction
+
+function! s:packager.render_if_no_timers(...) abort
+  if s:has_timers
+    return
+  endif
+
+  let l:ms = str2nr(split(split(reltimestr(reltime(self.last_render_time)))[0], '\.')[1]) / 1000
+  if l:ms < 100 && a:0 ==? 0
+    return
+  endif
+
+  return self.render()
+endfunction
+
+function! s:packager.render() abort
+  let l:content = self.get_top_status()
+  for l:plugin in self.processed_plugins
+    if !empty(l:plugin.status)
+      call add(l:content, packager#utils#status(l:plugin.status, l:plugin.name, l:plugin.status_msg))
+    endif
+  endfor
+  let l:is_finished = has_key(self, 'post_run_hooks_called')
+  if l:is_finished
+    let l:content += [
+          \ '',
+          \ "Press 'D' to view latest updates.",
+          \ "Press 'O' on plugin to open plugin details.",
+          \ "Press 'E' on a plugin line to see stdout in preview window.",
+          \ "Press 'q' to quit this buffer.",
+          \ ]
+  endif
+  silent 1,$delete _
+  call setbufline(bufnr('__packager__'), 1, l:content)
+  let self.last_render_time = reltime()
+
+  if l:is_finished
+    call setbufvar('__packager__', '&modifiable', 0)
+    call timer_stop(self.timer)
+  endif
 endfunction
 
 function! s:packager.open_sha() abort
@@ -336,7 +385,7 @@ function! s:packager.open_stdout(...) abort
 endfunction
 
 function! s:packager.find_plugin_by_sha(sha) abort
-  for l:plugin in values(self.processed_plugins)
+  for l:plugin in self.processed_plugins
     let l:commits = filter(copy(l:plugin.last_update), printf("v:val =~? '^%s'", a:sha))
     if len(l:commits) > 0
       return l:plugin
@@ -395,7 +444,7 @@ function! s:packager.open_plugin_details() abort
 endfunction
 
 function! s:packager.update_remote_plugins_and_helptags() abort
-  for l:plugin in values(self.processed_plugins)
+  for l:plugin in self.processed_plugins
     if l:plugin.updated
       silent! exe 'helptags' fnameescape(printf('%s%sdoc', l:plugin.dir, s:slash))
 
@@ -471,40 +520,41 @@ endfunction
 
 function! s:stdout_handler(plugin, id, message, event) dict abort
   call a:plugin.log_event_messages(a:event, a:message)
+  call self.render_if_no_timers()
 
   if a:event !=? 'exit'
-    return a:plugin.update_status('progress', a:plugin.get_last_progress_message())
+    return a:plugin.set_status('progress', a:plugin.get_last_progress_message())
   endif
 
   if a:message !=? 0
-    call self.update_top_status_installed()
+    call self.update_running_jobs()
     let a:plugin.update_failed = 1
     let l:err_msg = a:plugin.get_short_error_message()
     let l:err_msg = !empty(l:err_msg) ? printf(' - %s', l:err_msg) : ''
-    return a:plugin.update_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
+    return a:plugin.set_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
   endif
 
   let l:status_text = a:plugin.update_install_status()
 
   if (a:plugin.updated || !empty(get(self.post_run_opts, 'force_hooks', 0))) && !empty(a:plugin.do)
     call packager#utils#load_plugin(a:plugin)
-    call a:plugin.update_status('progress', 'Running post update hooks...')
+    call a:plugin.set_status('progress', 'Running post update hooks...')
     if type(a:plugin.do) ==? type(function('call'))
       try
         call call(a:plugin.do, [a:plugin])
-        call a:plugin.update_status('ok', 'Finished running post update hook!')
+        call a:plugin.set_status('ok', 'Finished running post update hook!')
       catch
-        call a:plugin.update_status('error', printf('Error on hook - %s', v:exception))
+        call a:plugin.set_status('error', printf('Error on hook - %s', v:exception))
       endtry
-      call self.update_top_status_installed()
+      call self.update_running_jobs()
     elseif a:plugin.do[0] ==? ':'
       try
         exe a:plugin.do[1:]
-        call a:plugin.update_status('ok', 'Finished running post update hook!')
+        call a:plugin.set_status('ok', 'Finished running post update hook!')
       catch
-        call a:plugin.update_status('error', printf('Error on hook - %s', v:exception))
+        call a:plugin.set_status('error', printf('Error on hook - %s', v:exception))
       endtry
-      call self.update_top_status_installed()
+      call self.update_running_jobs()
     else
       call self.start_job(a:plugin.do, {
             \ 'handler': 's:hook_stdout_handler',
@@ -513,8 +563,8 @@ function! s:stdout_handler(plugin, id, message, event) dict abort
             \ })
     endif
   else
-    call a:plugin.update_status('ok', l:status_text)
-    call self.update_top_status_installed()
+    call a:plugin.set_status('ok', l:status_text)
+    call self.update_running_jobs()
   endif
 
   if self.remaining_jobs <=? 0
@@ -523,20 +573,21 @@ function! s:stdout_handler(plugin, id, message, event) dict abort
 endfunction
 
 function! s:hook_stdout_handler(plugin, id, message, event) dict abort
+  call self.render_if_no_timers()
   call a:plugin.log_event_messages(a:event, a:message, 'hook')
 
   if a:event !=? 'exit'
-    return a:plugin.update_status('progress', a:plugin.get_last_progress_message('hook'))
+    return a:plugin.set_status('progress', a:plugin.get_last_progress_message('hook'))
   endif
 
-  call self.update_top_status_installed()
+  call self.update_running_jobs()
   if a:message !=? 0
     let l:err_msg = a:plugin.get_short_error_message('hook')
     let l:err_msg = !empty(l:err_msg) ? printf(' - %s', l:err_msg) : ''
     let a:plugin.hook_failed = 1
-    call a:plugin.update_status('error', printf('Error on hook (exit status %d)%s', a:message, l:err_msg))
+    call a:plugin.set_status('error', printf('Error on hook (exit status %d)%s', a:message, l:err_msg))
   else
-    call a:plugin.update_status('ok', 'Finished running post update hook!')
+    call a:plugin.set_status('ok', 'Finished running post update hook!')
   endif
 
   if self.remaining_jobs <=? 0
