@@ -88,7 +88,7 @@ function! s:plugin.update_git_command() abort
   if l:is_on_branch
     let l:update_cmd += ['&&', 'git', 'pull', '--ff-only', '--progress', '--rebase=false']
   else
-    let l:update_cmd += ['&&', 'git', 'fetch', self.url]
+    let l:update_cmd += ['&&', 'git', 'fetch', self.url, '--depth', '999999']
   endif
   let l:update_cmd += ['&&', 'git', 'submodule', 'update', '--init', '--recursive', '--progress']
 
@@ -97,7 +97,7 @@ endfunction
 
 function! s:plugin.install_git_command(depth) abort
   let l:depth = !empty(self.commit) ? '999999' : a:depth
-  let l:clone_cmd = ['git', 'clone', '--progress', self.url, self.dir, '--depth', l:depth]
+  let l:clone_cmd = ['git', 'clone', '--progress', self.url, self.dir, '--depth', l:depth, '--no-single-branch']
 
   if empty(self.commit)
     for l:branch_or_tag in [self.tag, self.branch]
