@@ -37,6 +37,16 @@ function! packager#status() abort
   call s:packager.status()
 endfunction
 
+function! packager#plugins() abort
+  call s:ensure_init()
+  return s:packager.get_plugins()
+endfunction
+
+function! packager#plugin(name) abort
+  call s:ensure_init()
+  return s:packager.get_plugin(a:name)
+endfunction
+
 function! s:ensure_init()
   if !exists('s:packager')
     return packager#init()

@@ -48,6 +48,26 @@ function! s:plugin.new(name, opts, packager) abort
   return l:instance
 endfunction
 
+function! s:plugin.get_info() abort
+  if !s:is_windows
+      let self.rev = self.revision()
+      let self.head_ref = self.get_head_ref()
+      let self.main_branch = self.get_main_branch()
+  endif
+  return {
+        \ 'type': self.type,
+        \ 'rev': self.rev,
+        \ 'head_ref': self.head_ref,
+        \ 'main_branch': self.main_branch,
+        \ 'name': self.name,
+        \ 'dir': self.dir,
+        \ 'is_local': self.local,
+        \ 'rtp_dir': self.rtp_dir,
+        \ 'url': self.url,
+        \ 'installed': self.installed,
+        \ }
+endfunction
+
 function! s:plugin.queue() abort
   if !s:is_windows
     let self.rev = self.revision()

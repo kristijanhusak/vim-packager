@@ -518,6 +518,17 @@ function! s:packager.add_mappings() abort
   endif
 endfunction
 
+function! s:packager.get_plugins() abort
+  return map(values(self.plugins), {_, plugin -> plugin.get_info()})
+endfunction
+
+function! s:packager.get_plugin(name) abort
+  if !has_key(self.plugins, a:name)
+    throw 'No plugin named '.a:name
+  endif
+  return self.plugins[a:name].get_info()
+endfunction
+
 function! s:stdout_handler(plugin, id, message, event) dict abort
   call a:plugin.log_event_messages(a:event, a:message)
   call self.render_if_no_timers()
