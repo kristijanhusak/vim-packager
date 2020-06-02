@@ -522,6 +522,10 @@ function! s:packager.get_plugins() abort
   return map(values(self.plugins), {_, plugin -> plugin.get_info()})
 endfunction
 
+function! s:packager.get_plugin_names() abort
+  return keys(self.plugins)
+endfunction
+
 function! s:packager.get_plugin(name) abort
   if !has_key(self.plugins, a:name)
     throw 'No plugin named '.a:name

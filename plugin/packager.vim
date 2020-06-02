@@ -42,6 +42,11 @@ function! packager#plugins() abort
   return s:packager.get_plugins()
 endfunction
 
+function! packager#plugin_names() abort
+  call s:ensure_init()
+  return s:packager.get_plugin_names()
+endfunction
+
 function! packager#plugin(name) abort
   call s:ensure_init()
   return s:packager.get_plugin(a:name)
