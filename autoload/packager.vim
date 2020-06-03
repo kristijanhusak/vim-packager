@@ -8,6 +8,7 @@ let s:defaults = {
       \ 'jobs': 8,
       \ 'window_cmd': 'vertical topleft new',
       \ 'default_plugin_type': 'start',
+      \ 'disable_default_mappings': 0,
       \ }
 
 function! packager#new(opts) abort
@@ -489,6 +490,9 @@ function! s:packager.is_running() abort
 endfunction
 
 function! s:packager.add_mappings() abort
+  if self.disable_default_mappings
+    return
+  endif
   if !hasmapto('<Plug>(PackagerQuit)')
     silent! nmap <silent><buffer> q <Plug>(PackagerQuit)
   endif

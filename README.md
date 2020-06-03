@@ -71,10 +71,10 @@ function! PackagerInit() abort
   call packager#add('autozimu/LanguageClient-neovim', { 'do': 'bash install.sh' })
   call packager#add('morhetz/gruvbox')
   call packager#local('~/my_vim_plugins/my_awesome_plugin')
-  
+
   "Provide full URL; useful if you want to clone from somewhere else than Github.
   call packager#add('https://my.other.public.git/tpope/vim-fugitive.git')
-  
+
   "Provide SSH-based URL; useful if you have write access to a repository and wish to push to it
   call packager#add('git@github.com:mygithubid/myrepo.git')
 
@@ -96,7 +96,7 @@ command! PackagerClean call PackagerInit() | call packager#clean()
 command! PackagerStatus call PackagerInit() | call packager#status()
 
 "Load plugins only for specific filetype
-"Note that this should not be done for plugins that handle their loading using ftplugin file. 
+"Note that this should not be done for plugins that handle their loading using ftplugin file.
 "More info in :help pack-add
 augroup packager_filetype
   autocmd!
@@ -125,6 +125,7 @@ Available options:
 * `dir` - Directory to use for installation. By default uses `&packpath` value, which is `~/.vim/pack/packager` in Vim, and `~/.config/nvim/pack/packager` in Neovim.
 * `window_cmd` - What command to use to open packager window. Default: `vertical topleft new`
 * `default_plugin_type` - Default `type` option for plugins where it's not provided. More info below in `packager#add` options. Default: `start`
+* `disable_default_mappings` - Disable all default mappings for packager buffer. Default: `0`
 
 #### packager#add(name, options)
 
