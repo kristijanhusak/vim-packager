@@ -159,7 +159,7 @@ function! s:packager.clean() abort
       call packager#utils#setline(l:line, packager#utils#status_ok(l:item, 'Removed!'))
     endif
   endfor
-  call setbufvar('__packager__', '&modifiable', 0)
+  setlocal nomodifiable
 endfunction
 
 function! s:packager.status() abort
@@ -198,7 +198,7 @@ function! s:packager.status() abort
   call add(l:content, "Press 'q' to quit this buffer.")
 
   call packager#utils#setline(1, l:content)
-  call setbufvar('__packager__', '&modifiable', 0)
+  setlocal nomodifiable
 endfunction
 
 function! s:packager.quit() abort
@@ -207,7 +207,7 @@ function! s:packager.quit() abort
       return
     endif
   endif
-  call timer_stop(self.timer)
+  silent! call timer_stop(self.timer)
   silent exe ':q!'
 endfunction
 
@@ -327,13 +327,16 @@ function! s:packager.render() abort
           \ "Press 'q' to quit this buffer.",
           \ ]
   endif
+  if &filetype !=? 'packager'
+    exe bufwinnr('__packager__').'wincmd w'
+  endif
   silent 1,$delete _
-  call setbufline(bufnr('__packager__'), 1, l:content)
+  call setline(1, l:content)
   let self.last_render_time = reltime()
 
   if l:is_finished
-    call setbufvar('__packager__', '&modifiable', 0)
-    call timer_stop(self.timer)
+    setlocal nomodifiable
+    silent! call timer_stop(self.timer)
   endif
 endfunction
 

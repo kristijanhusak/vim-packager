@@ -149,20 +149,17 @@ function! packager#utils#load_plugin(plugin) abort
 endfunction
 
 function! packager#utils#setline(line, content) abort
-  let l:packager_bufnr = bufnr('__packager_')
-  let l:current_bufnr = bufnr('')
+  let l:packager_winnr = bufwinnr('__packager__')
 
-  if l:packager_bufnr < 0
+  if l:packager_winnr < 0
     return
   endif
 
-  if l:packager_bufnr ==? l:current_bufnr
-    return setline(a:line, a:content)
+  if winnr() !=? l:packager_winnr
+    silent! exe l:packager_winnr.'wincmd w'
   endif
 
-  silent! exe printf('%wincmd w', l:packager_bufnr)
   call setline(a:line, a:content)
-  silent! exe printf('%wincmd w', l:current_bufnr)
 endfunction
 
 function! packager#utils#symlink(from, to) abort
