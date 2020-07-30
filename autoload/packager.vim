@@ -540,6 +540,12 @@ function! s:packager.get_plugin(name) abort
   return self.plugins[a:name].get_info()
 endfunction
 
+function! s:packager.run_hooks_if_finished() abort
+  if self.remaining_jobs <=? 0
+    call self.run_post_update_hooks()
+  endif
+endfunction
+
 function! s:stdout_handler(plugin, id, message, event) dict abort
   call a:plugin.log_event_messages(a:event, a:message)
   call self.render_if_no_timers()
@@ -553,7 +559,8 @@ function! s:stdout_handler(plugin, id, message, event) dict abort
     let a:plugin.update_failed = 1
     let l:err_msg = a:plugin.get_short_error_message()
     let l:err_msg = !empty(l:err_msg) ? printf(' - %s', l:err_msg) : ''
-    return a:plugin.set_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
+    call a:plugin.set_status('error', printf('Error (exit status %d)%s', a:message, l:err_msg))
+    return self.run_hooks_if_finished()
   endif
 
   let l:status_text = a:plugin.update_install_status()
@@ -589,9 +596,7 @@ function! s:stdout_handler(plugin, id, message, event) dict abort
     call self.update_running_jobs()
   endif
 
-  if self.remaining_jobs <=? 0
-    call self.run_post_update_hooks()
-  endif
+  return self.run_hooks_if_finished()
 endfunction
 
 function! s:hook_stdout_handler(plugin, id, message, event) dict abort
@@ -612,7 +617,5 @@ function! s:hook_stdout_handler(plugin, id, message, event) dict abort
     call a:plugin.set_status('ok', 'Finished running post update hook!')
   endif
 
-  if self.remaining_jobs <=? 0
-    call self.run_post_update_hooks()
-  endif
+  return self.run_hooks_if_finished()
 endfunction
