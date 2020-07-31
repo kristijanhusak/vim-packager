@@ -21,9 +21,12 @@ function! s:plugin.new(name, opts, packager) abort
   let l:instance.name = !empty(l:instance.name) ? l:instance.name : split(a:name, '/')[-1]
   let l:instance.dir = printf('%s%s%s%s%s', a:packager.dir, s:slash, l:instance.type, s:slash, l:instance.name)
   let l:instance.local = get(l:instance, 'local', 0)
-  let l:instance.rtp_dir = !empty(l:instance.rtp)
-        \ ? printf('%s__%s', l:instance.dir, substitute(l:instance.rtp, '[\\\/]$', '', ''))
-        \ : ''
+  let l:instance.rtp_dir = ''
+  if !empty(l:instance.rtp)
+    let l:rtp = substitute(l:instance.rtp, '[\\\/]$', '', '')
+    let l:rtp = substitute(l:rtp, '[\\\/]', '__', 'g')
+    let l:instance.rtp_dir = printf('%s__%s', l:instance.dir, l:rtp)
+  endif
   let l:instance.url = a:name =~? '^\(http\|git@\).*'
         \ ? a:name
         \ : l:instance.local ? a:name : printf('https://github.com/%s', a:name)
