@@ -62,7 +62,7 @@ function! s:packager.install(opts) abort
   let self.post_run_opts = a:opts
   call self.open_buffer()
   if s:has_timers
-    let self.timer = timer_start(100, {timer->self.render()}, { 'repeat': -1 })
+    let self.timer = timer_start(200, {timer->self.render()}, { 'repeat': -1 })
   else
     call self.render_if_no_timers()
   endif
@@ -277,6 +277,7 @@ function! s:packager.open_buffer() abort
   hi def link packagerProgress       Boolean
 
   call self.add_mappings()
+  wincmd p
 endfunction
 
 function! s:packager.get_top_status() abort
@@ -327,15 +328,24 @@ function! s:packager.render() abort
           \ "Press 'q' to quit this buffer.",
           \ ]
   endif
-  if &filetype !=? 'packager'
-    exe bufwinnr('__packager__').'wincmd w'
+  let l:bufnr = bufnr('__packager__')
+  let l:has_setbufline = exists('*setbufline')
+  if l:has_setbufline
+    call setbufline(l:bufnr, 1, l:content)
+  else
+    if &filetype !=? 'packager'
+      exe bufwinnr('__packager__').'wincmd w'
+    endif
+    call setline(1, l:content)
   endif
-  silent 1,$delete _
-  call setline(1, l:content)
   let self.last_render_time = reltime()
 
   if l:is_finished
-    setlocal nomodifiable
+    if l:has_setbufline
+      call setbufvar(l:bufnr, '&modifiable', 0)
+    else
+      setlocal nomodifiable
+    endif
     silent! call timer_stop(self.timer)
   endif
 endfunction
