@@ -62,7 +62,7 @@ function! s:packager.install(opts) abort
   let self.post_run_opts = a:opts
   call self.open_buffer()
   if s:has_timers
-    let self.timer = timer_start(200, {timer->self.render()}, { 'repeat': -1 })
+    let self.timer = timer_start(100, {timer->self.render()}, { 'repeat': -1 })
   else
     call self.render_if_no_timers()
   endif
