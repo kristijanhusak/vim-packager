@@ -277,7 +277,6 @@ function! s:packager.open_buffer() abort
   hi def link packagerProgress       Boolean
 
   call self.add_mappings()
-  wincmd p
 endfunction
 
 function! s:packager.get_top_status() abort
