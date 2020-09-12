@@ -436,6 +436,8 @@ function! s:packager.open_plugin_details() abort
 
   if !empty(l:plugin.branch)
     call add(l:content, 'Branch: '.l:plugin.branch)
+  else
+    call add(l:content, 'Branch: '.l:plugin.get_main_branch())
   endif
   if !empty(l:plugin.tag)
     call add(l:content, 'Tag: '.l:plugin.tag)
