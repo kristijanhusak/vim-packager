@@ -139,7 +139,7 @@ function! s:packager.clean() abort
   call packager#utils#setline(1, l:content)
 
   let l:option = packager#utils#confirm_with_options('Remove above folder(s)?', "&Yes\n&No\n&Ask for each folder")
-  if l:option ==? 2
+  if l:option ==? 0 || l:option ==? 2
     return self.quit()
   endif
 
