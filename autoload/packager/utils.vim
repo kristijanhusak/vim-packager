@@ -173,3 +173,17 @@ function! packager#utils#symlink(from, to) abort
 
   return []
 endfunction
+
+function! packager#utils#git_version() abort
+  let result = get(packager#utils#system(['git', '--version']), 0, '')
+  if empty(result)
+    return []
+  endif
+
+  let components = split(result, '\D\+')
+  if empty(components)
+    return []
+  endif
+
+  return map(components, 'str2nr(v:val)')
+endfunction
