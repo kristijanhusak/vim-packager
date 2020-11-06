@@ -30,6 +30,7 @@ function! s:packager.new(opts) abort
   let l:instance.icons_str = join(values(packager#utils#status_icons()), '')
   let l:instance.timer = -1
   let l:instance.last_render_time = reltime()
+  let l:instance.git_version = packager#utils#git_version()
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'opt'), 'p')
   silent! call mkdir(printf('%s%s%s', l:instance.dir, s:slash, 'start'), 'p')
   return l:instance
@@ -555,6 +556,14 @@ function! s:packager.run_hooks_if_finished() abort
   if self.remaining_jobs <=? 0
     call self.run_post_update_hooks()
   endif
+endfunction
+
+function! s:packager.supports_submodule_progress() abort
+  if empty(self.git_version)
+    return 0
+  endif
+
+  return get(self.git_version, 0) >= 2 && get(self.git_version, 1) >= 11
 endfunction
 
 function! s:stdout_handler(plugin, id, message, event) dict abort

@@ -113,7 +113,10 @@ function! s:plugin.update_git_command() abort
   else
     let l:update_cmd += ['&&', 'git', 'fetch', self.url, '--depth', '999999']
   endif
-  let l:update_cmd += ['&&', 'git', 'submodule', 'update', '--init', '--recursive', '--progress']
+  let l:update_cmd += ['&&', 'git', 'submodule', 'update', '--init', '--recursive']
+  if self.packager.supports_submodule_progress()
+    let l:update_cmd += ['--progress']
+  endif
 
   return l:update_cmd
 endfunction
@@ -135,7 +138,10 @@ function! s:plugin.install_git_command(depth) abort
   if s:is_windows
     let l:clone_cmd += ['/d']
   endif
-  let l:clone_cmd += [self.dir, '&&', 'git', 'submodule', 'update', '--init', '--recursive', '--progress']
+  let l:clone_cmd += [self.dir, '&&', 'git', 'submodule', 'update', '--init', '--recursive']
+  if self.packager.supports_submodule_progress()
+    let l:clone_cmd += ['--progress']
+  endif
 
   if !empty(self.commit)
     let l:clone_cmd += ['&&', 'git', 'checkout', self.commit]
