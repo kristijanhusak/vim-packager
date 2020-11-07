@@ -142,13 +142,35 @@ where plugins that are auto loaded goes to `start` folder. Default: `start`
 * `rtp` - Used in case when subdirectory contains vim plugin. Creates a symbolink link from subdirectory to the packager folder.
 If `type` of package is `opt` use `packadd {packagename}__{rtp}` to load it (example: `packadd onehalf__vim`)
 * `commit` - exact git commit to use. Default: '' (Check below for priority explanation)
-* `do` - Hook to run after plugin is installed/updated: Default: ''
+* `do` - Hook to run after plugin is installed/updated: Default: ''. Examples below.
 * `frozen` - When plugin is frozen, it is not being updated. Default: 0
 
 `branch`, `tag` and `commit` options go in certain priority:
 * `commit`
 * `tag`
 * `branch`
+
+Hooks can be defined in 3 ways:
+1. As a string that **doesn't** start with `:`. This runs the command as it is a shell command, in the plugin directory. Example:
+```vimL
+call packager#add('junegunn/fzf', { 'do': './install --all'})
+call packager#add('kristijanhusak/vim-js-file-import', { 'do': 'npm install' })
+```
+2. As a string that starts with `:`. This executes the hook as a vim command. Example:
+```vimL
+  call packager#add('fatih/vim-go', { 'do': ':GoInstallBinaries' })
+  call packager#add('iamcco/markdown-preview.nvim' , { 'do': ':call mkdp#util#install()' })
+```
+
+3. As a `funcref` that gets the plugin info as an argument. Example:
+```vimL
+  call packager#add('iamcco/markdown-preview.nvim' , { 'do': { -> mkdp#util#install() } })
+  call packager#add('junegunn/fzf', { 'do': function('InstallFzf') })
+
+  function! InstallFzf(plugin) abort
+    exe a:plugin.dir.'/install.sh --all'
+  endfunction
+```
 
 #### packager#local(name, options)
 **Note**: This function only creates a symbolic link from provided path to the packager folder
