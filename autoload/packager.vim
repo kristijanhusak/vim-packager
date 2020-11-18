@@ -41,6 +41,28 @@ function! s:packager.add(name, opts) abort
   let self.plugins[l:plugin.name] = l:plugin
 endfunction
 
+function! s:packager.add_required(name, required_package) abort
+  if type(a:required_package) ==? type('')
+    return self.add(a:required_package, {})
+  endif
+  let l:name = ''
+  let l:opts = {}
+  if type(a:required_package) ==? type([])
+    let l:name = get(a:required_package, 0, '')
+    let l:opts = get(a:required_package, 1, {})
+  elseif type(a:required_package) ==? type({})
+    let l:name = get(a:required_package, 'name', '')
+    let l:opts = get(a:required_package, 'opts', {})
+  endif
+  if empty(l:name)
+    throw 'Missing "requires" package name for '.a:name.'.'
+  endif
+  let l:plugin = packager#plugin#new(l:name, l:opts, self)
+  if !has_key(self.plugins, l:plugin.name)
+    let self.plugins[l:plugin.name] = l:plugin
+  endif
+endfunction
+
 function! s:packager.local(name, opts) abort
   let l:opts = get(a:opts, 0, {})
   let l:opts.local = 1

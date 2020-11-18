@@ -3,7 +3,7 @@ let s:plugin = {}
 let s:is_windows = has('win32')
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = { 'name': '', 'branch': '', 'commit': '', 'tag': '',
-      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'frozen': 0, 'rtp': '' }
+      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'frozen': 0, 'rtp': '', 'requires': '' }
 
 function! packager#plugin#new(name, opts, packager) abort
   return s:plugin.new(a:name, a:opts, a:packager)
@@ -47,6 +47,15 @@ function! s:plugin.new(name, opts, packager) abort
       call l:instance.get_head_ref('async')
       call l:instance.get_main_branch('async')
     endif
+  endif
+  if !empty(l:instance.requires) && type(l:instance.requires) !=? type([])
+    let l:instance.requires = [l:instance.requires]
+  endif
+
+  if !empty(l:instance.requires)
+    for require in l:instance.requires
+      call l:instance.packager.add_required(l:instance.name, require)
+    endfor
   endif
   return l:instance
 endfunction

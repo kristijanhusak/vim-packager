@@ -70,6 +70,13 @@ function! PackagerInit() abort
   call packager#add('Shougo/deoplete.nvim')
   call packager#add('autozimu/LanguageClient-neovim', { 'do': 'bash install.sh' })
   call packager#add('morhetz/gruvbox')
+  call packager#add('lewis6991/gitsigns.nvim', {'requires': 'nvim-lua/plenary.nvim'})
+  call packager#add('haorenW1025/completion-nvim', {'requires': [
+  \ ['nvim-treesitter/completion-treesitter', {'requires': 'nvim-treesitter/nvim-treesitter'}],
+  \ {'name': 'steelsojka/completion-buffers', 'opts': {'type': 'opt'}},
+  \ 'kristijanhusak/completion-tags',
+  \ ]})
+  call packager#add('hrsh7th/vim-vsnip-integ', {'requires': ['hrsh7th/vim-vsnip'] })
   call packager#local('~/my_vim_plugins/my_awesome_plugin')
 
   "Provide full URL; useful if you want to clone from somewhere else than Github.
@@ -144,6 +151,7 @@ If `type` of package is `opt` use `packadd {packagename}__{rtp}` to load it (exa
 * `commit` - exact git commit to use. Default: '' (Check below for priority explanation)
 * `do` - Hook to run after plugin is installed/updated: Default: ''. Examples below.
 * `frozen` - When plugin is frozen, it is not being updated. Default: 0
+* `requires` - Dependencies for the plugin. Can be *string* (ex. 'kristijanhusak/vim-packager'), *list*(['kristijanhusak/vim-packager', {'type': 'opt'}]) or *dict*({'name': 'kristijanhusak/vim-packager', 'opts': {'type': 'opt'} }). See example vimrc above.
 
 `branch`, `tag` and `commit` options go in certain priority:
 * `commit`
