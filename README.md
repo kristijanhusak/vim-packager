@@ -54,6 +54,7 @@ git clone https://github.com/kristijanhusak/vim-packager ~/AppData/Local/nvim/pa
 
 #### Example .vimrc content
 Using `setup` function.
+
 ```vim
 if &compatible
   set nocompatible
@@ -92,6 +93,7 @@ endfunction
 packadd vim-packager
 call packager#setup(function('s:packager_init'))
 ```
+and run `PackagerInstall` or `PackagerUpdate`. See all available commands [here](#commands)
 
 Or doing the old way that allows more control.
 
@@ -200,6 +202,7 @@ require('packager').setup(function(packager)
   packager.add('sonph/onehalf', {rtp = 'vim/'})
 end)
 ```
+and run `PackagerInstall` or `PackagerUpdate`. See all available commands [here](#commands)
 
 ### Functions
 
@@ -327,6 +330,15 @@ Each plugin can have several states:
 This removes unused plugins. It will ask for confirmation before proceeding.
 Confirmation allows selecting option to delete all folders from the list (default action),
 or ask for each folder if you want to delete it.
+
+### Commands
+Commands are added only when using `packager#setup` or Lua `require('packager').setup()`
+
+* PackagerInstall - same as [packager#install(`<args>`)](https://github.com/kristijanhusak/vim-packager#packagerinstallopts).
+* PackagerUpdate - same as [packager#update(`<args>`)](https://github.com/kristijanhusak/vim-packager#packagerupdateopts). Note that args are passed as they are written.
+    For example, to force running hooks you would do `:PackagerUpdate {'force_hooks': 1}`
+* PackagerClean - same as [packager#clean()](https://github.com/kristijanhusak/vim-packager#packagerclean)
+* PackagerStatus - same as [packager#status()](https://github.com/kristijanhusak/vim-packager#packagerstatus)
 
 ## Configuration
 Several buffer mappings are added for packager buffer by default:
