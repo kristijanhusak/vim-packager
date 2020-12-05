@@ -9,12 +9,12 @@ endfunction
 
 function! packager#add(name, ...) abort
   call s:ensure_init()
-  call s:packager.add(a:name, a:000)
+  call s:packager.add(a:name, get(a:, 1, {}))
 endfunction
 
 function! packager#local(name, ...) abort
   call s:ensure_init()
-  call s:packager.local(a:name, a:000)
+  call s:packager.local(a:name, get(a:, 1, {}))
 endfunction
 
 function! packager#install(...) abort
@@ -65,6 +65,39 @@ function! s:call_packager_method(method, ...) abort
   endif
 
   return s:packager[a:method]()
+endfunction
+
+function! packager#setup(callback, ...) abort
+  let l:opts = get(a:, 1, {})
+  if empty(a:callback)
+    throw 'Provide valid callback to packager setup via string or funcref.'
+  endif
+  if type(a:callback) !=? '' && type(a:callback) !=? type(function('tr'))
+    throw 'Packager callback must be a string or a funcref/function.'
+  endif
+
+  if type(a:callback) ==? type('') && !exists('*'.a:callback)
+    throw 'packager function '.a:callback.' does not exist. Try providing a function or funcref.'
+  endif
+
+  let s:callback = type(a:callback) ==? type('') ? funcref(a:callback) : a:callback
+  let s:opts = get(a:, 1, {})
+
+  command! -nargs=* -bar PackagerInstall call s:run_cmd('install', <args>)
+  command! -nargs=* -bar PackagerUpdate call s:run_cmd('update', <args>)
+  command! -bar PackagerClean call s:run_cmd('clean', <args>)
+  command! -bar PackagerStatus call s:run_cmd('status', <args>)
+endfunction
+
+function! s:run_cmd(name, ...)
+  call packager#init(s:opts)
+  call s:callback(s:packager)
+  let l:args = []
+  if a:name ==? 'install' || a:name ==? 'update'
+    let l:args = [get(a:, 1, {})]
+  endif
+
+  return call('packager#'.a:name, l:args)
 endfunction
 
 nnoremap <silent> <Plug>(PackagerQuit) :<C-u>call <sid>call_packager_method('quit')<CR>

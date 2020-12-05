@@ -10,7 +10,7 @@ function! packager#plugin#new(name, opts, packager) abort
 endfunction
 
 function! s:plugin.new(name, opts, packager) abort
-  let l:instance = extend(copy(self), extend(copy(get(a:opts, 0, {})), s:defaults, 'keep'))
+  let l:instance = extend(copy(self), extend(copy(a:opts), s:defaults, 'keep'))
   if !has_key(l:instance, 'type') || empty(l:instance.type)
     let l:instance.type = a:packager.default_plugin_type
   endif

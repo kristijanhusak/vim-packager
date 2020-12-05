@@ -36,8 +36,8 @@ function! s:packager.new(opts) abort
   return l:instance
 endfunction
 
-function! s:packager.add(name, opts) abort
-  let l:plugin = packager#plugin#new(a:name, a:opts, self)
+function! s:packager.add(name, ...) abort
+  let l:plugin = packager#plugin#new(a:name, get(a:, 1, {}), self)
   let self.plugins[l:plugin.name] = l:plugin
 endfunction
 
@@ -63,10 +63,10 @@ function! s:packager.add_required(name, required_package) abort
   endif
 endfunction
 
-function! s:packager.local(name, opts) abort
-  let l:opts = get(a:opts, 0, {})
+function! s:packager.local(name, ...) abort
+  let l:opts = get(a:, 1, {})
   let l:opts.local = 1
-  let l:plugin = packager#plugin#new(a:name, [l:opts], self)
+  let l:plugin = packager#plugin#new(a:name, l:opts, self)
   let self.plugins[l:plugin.name] = l:plugin
 endfunction
 
