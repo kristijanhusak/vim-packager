@@ -53,8 +53,49 @@ git clone https://github.com/kristijanhusak/vim-packager ~/AppData/Local/nvim/pa
 ```
 
 #### Example .vimrc content
+Using `setup` function.
+```vim
+if &compatible
+  set nocompatible
+endif
 
-```vimL
+function! s:packager_init(packager) abort
+  call a:packager.add('kristijanhusak/vim-packager', { 'type': 'opt' })
+  call a:packager.add('junegunn/fzf', { 'do': './install --all && ln -s $(pwd) ~/.fzf'})
+  call a:packager.add('junegunn/fzf.vim')
+  call a:packager.add('vimwiki/vimwiki', { 'type': 'opt' })
+  call a:packager.add('Shougo/deoplete.nvim')
+  call a:packager.add('autozimu/LanguageClient-neovim', { 'do': 'bash install.sh' })
+  call a:packager.add('morhetz/gruvbox')
+  call a:packager.add('lewis6991/gitsigns.nvim', {'requires': 'nvim-lua/plenary.nvim'})
+  call a:packager.add('haorenW1025/completion-nvim', {'requires': [
+  \ ['nvim-treesitter/completion-treesitter', {'requires': 'nvim-treesitter/nvim-treesitter'}],
+  \ {'name': 'steelsojka/completion-buffers', 'opts': {'type': 'opt'}},
+  \ 'kristijanhusak/completion-tags',
+  \ ]})
+  call a:packager.add('hrsh7th/vim-vsnip-integ', {'requires': ['hrsh7th/vim-vsnip'] })
+  call a:packager.local('~/my_vim_plugins/my_awesome_plugin')
+
+  "Provide full URL; useful if you want to clone from somewhere else than Github.
+  call a:packager.add('https://my.other.public.git/tpope/vim-fugitive.git')
+
+  "Provide SSH-based URL; useful if you have write access to a repository and wish to push to it
+  call a:packager.add('git@github.com:mygithubid/myrepo.git')
+
+  "Loaded only for specific filetypes on demand. Requires autocommands below.
+  call a:packager.add('kristijanhusak/vim-js-file-import', { 'do': 'npm install', 'type': 'opt' })
+  call a:packager.add('fatih/vim-go', { 'do': ':GoInstallBinaries', 'type': 'opt' })
+  call a:packager.add('neoclide/coc.nvim', { 'do': function('InstallCoc') })
+  call a:packager.add('sonph/onehalf', {'rtp': 'vim/'})
+endfunction
+
+packadd vim-packager
+call packager#setup(function('s:packager_init'))
+```
+
+Or doing the old way that allows more control.
+
+```vim
 if &compatible
   set nocompatible
 endif
@@ -97,10 +138,11 @@ function! InstallCoc(plugin) abort
   call coc#add_extension('coc-eslint', 'coc-tsserver', 'coc-pyls')
 endfunction
 
-command! PackagerInstall call PackagerInit() | call packager#install()
-command! -bang PackagerUpdate call PackagerInit() | call packager#update({ 'force_hooks': '<bang>' })
-command! PackagerClean call PackagerInit() | call packager#clean()
-command! PackagerStatus call PackagerInit() | call packager#status()
+" These commands are automatically added when using `packager#setup()`
+command! -nargs=* -bar PackagerInstall call PackagerInit() | call packager#install(<args>)
+command! -nargs=* -bar ackagerUpdate call PackagerInit() | call packager#update(<args>)
+command! -bar PackagerClean call PackagerInit() | call packager#clean()
+command! -bar PackagerStatus call PackagerInit() | call packager#status()
 
 "Load plugins only for specific filetype
 "Note that this should not be done for plugins that handle their loading using ftplugin file.
@@ -120,8 +162,54 @@ After that, reload vimrc, and run `:PackagerInstall`. It will install all the pl
 If some plugin installation (or it's hook) fail, you will get (as much as possible) descriptive error on the plugin line.
 To view more, press `E` on the plugin line to view whole stdout.
 
+### Neovim Lua support
+There is some basic Lua support for latest Neovim (0.5.0). Here's short example:
+```lua
+vim.cmd [[packadd vim-packager]]
+require('packager').setup(function(packager)
+  packager.add('kristijanhusak/vim-packager', { type = 'opt' })
+  packager.add('junegunn/fzf', { ['do'] = './install --all && ln -s $(pwd) ~/.fzf'})
+  packager.add('junegunn/fzf.vim')
+  packager.add('vimwiki/vimwiki', { type = 'opt' })
+  packager.add('Shougo/deoplete.nvim')
+  packager.add('autozimu/LanguageClient-neovim', { ['do'] = 'bash install.sh' })
+  packager.add('morhetz/gruvbox')
+  packager.add('lewis6991/gitsigns.nvim', {requires = 'nvim-lua/plenary.nvim'})
+  packager.add('haorenW1025/completion-nvim', {requires = {
+    {'nvim-treesitter/completion-treesitter', {requires = 'nvim-treesitter/nvim-treesitter'}},
+    {name = 'steelsojka/completion-buffers', opts = {type = 'opt'}},
+    'kristijanhusak/completion-tags',
+  }})
+  packager.add('hrsh7th/vim-vsnip-integ', {requires = {'hrsh7th/vim-vsnip'} })
+  packager['local']('~/my_vim_plugins/my_awesome_plugin')
+
+  --Provide full URL; useful if you want to clone from somewhere else than Github.
+  packager.add('https://my.other.public.git/tpope/vim-fugitive.git')
+
+  --Provide SSH-based URL; useful if you have write access to a repository and wish to push to it
+  packager.add('git@github.com:mygithubid/myrepo.git')
+
+  packager.add('kristijanhusak/vim-js-file-import', { ['do'] = 'npm install', type = 'opt' })
+  packager.add('fatih/vim-go', { ['do'] = ':GoInstallBinaries', type = 'opt' })
+  packager.add('neoclide/coc.nvim', {branch = 'master', ['do'] = function(plugin)
+    vim.loop.spawn('yarn', {
+        args = {'install'},
+        cwd = plugin.dir,
+      })
+  end})
+  packager.add('sonph/onehalf', {rtp = 'vim/'})
+end)
+```
 
 ### Functions
+
+#### packager#setup(callback_function, opts)
+This is a small wrapper around functions explained below. It does this:
+1. Adds all necessary commands. `PackagerInstall`, `PackagerUpdate`, `PackagerClean` and `PackagerStatus`
+2. Running any of the command does this:
+  * calls `packager#init(opts)`
+  * calls provided `callback_function` with `packager` instance
+  * calls proper function for the command
 
 #### packager#init(options)
 
