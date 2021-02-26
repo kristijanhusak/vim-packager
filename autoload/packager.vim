@@ -74,6 +74,10 @@ function! s:packager.install(opts) abort
   let self.start_time = reltime()
   let self.result = []
   let self.processed_plugins = filter(values(self.plugins), 'v:val.installed ==? 0')
+  let only_plugins = get(a:opts, 'plugins', [])
+  if !empty(only_plugins)
+    let self.processed_plugins = filter(self.processed_plugins, 'index(only_plugins, v:val.name) > -1')
+  endif
   let self.remaining_jobs = len(self.processed_plugins)
 
   if self.remaining_jobs ==? 0
@@ -104,6 +108,10 @@ function! s:packager.update(opts) abort
   let self.start_time = reltime()
   let self.result = []
   let self.processed_plugins = filter(values(self.plugins), 'v:val.frozen ==? 0')
+  let only_plugins = get(a:opts, 'plugins', [])
+  if !empty(only_plugins)
+    let self.processed_plugins = filter(self.processed_plugins, 'index(only_plugins, v:val.name) > -1')
+  endif
   let self.remaining_jobs = len(self.processed_plugins)
 
   if self.remaining_jobs ==? 0

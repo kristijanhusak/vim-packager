@@ -291,6 +291,7 @@ This only installs plugins that are not installed
 Available options:
 
 * `on_finish` - Run command after installation finishes. For example to quit at the end: `call packager#install({ 'on_finish': 'quitall' })`
+* `plugins` - Array of plugin names to install. Example: `call packager#install({'plugins': ['gruvbox', 'gitsigns.nvim']})`
 
 When installation finishes, there are two mappings that can be used:
 
@@ -305,6 +306,7 @@ Available options:
 
 * `on_finish` - Run command after update finishes. For example to quit at the end: `call packager#update({ 'on_finish': 'quitall' })`
 * `force_hooks` - Force running post hooks for each package even if up to date. Useful when some hooks previously failed. Must be non-empty value: `call packager#update({ 'force_hooks': 1 })`
+* `plugins` - Array of plugin names to update. Example: `call packager#update({'plugins': ['gruvbox', 'gitsigns.nvim']})`
 
 When update finishes, there are two mappings that can be used:
 
