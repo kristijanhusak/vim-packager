@@ -142,7 +142,7 @@ endfunction
 
 " These commands are automatically added when using `packager#setup()`
 command! -nargs=* -bar PackagerInstall call PackagerInit() | call packager#install(<args>)
-command! -nargs=* -bar ackagerUpdate call PackagerInit() | call packager#update(<args>)
+command! -nargs=* -bar PackagerUpdate call PackagerInit() | call packager#update(<args>)
 command! -bar PackagerClean call PackagerInit() | call packager#clean()
 command! -bar PackagerStatus call PackagerInit() | call packager#status()
 
