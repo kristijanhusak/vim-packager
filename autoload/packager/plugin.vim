@@ -3,7 +3,8 @@ let s:plugin = {}
 let s:is_windows = has('win32')
 let s:slash = exists('+shellslash') && !&shellslash ? '\' : '/'
 let s:defaults = { 'name': '', 'branch': '', 'commit': '', 'tag': '',
-      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '', 'frozen': 0, 'rtp': '', 'requires': '' }
+      \ 'installed': 0, 'updated': 0, 'rev': '', 'do': '',
+      \ 'frozen': 0, 'rtp': '', 'requires': '', 'on_cmd': '', 'on_mapping': '', 'filetypes': [] }
 
 function! packager#plugin#new(name, opts, packager) abort
   return s:plugin.new(a:name, a:opts, a:packager)
@@ -57,7 +58,37 @@ function! s:plugin.new(name, opts, packager) abort
       call l:instance.packager.add_required(l:instance.name, require)
     endfor
   endif
+  if l:instance.type ==? 'opt'
+    call l:instance.setup_load_on_cmd()
+    call l:instance.setup_load_on_mapping()
+    call l:instance.setup_load_for_filetypes()
+  endif
   return l:instance
+endfunction
+
+function! s:plugin.setup_load_on_cmd() abort
+  if empty(self.on_cmd)
+    return
+  endif
+  let l:cmd = printf('command! %s delcommand %s | packadd %s | %s', self.on_cmd, self.name, self.on_cmd)
+endfunction
+
+function! s:plugin.setup_load_on_mapping() abort
+  if empty(self.on_mapping)
+    return
+  endif
+  let l:cmd = printf('nnoremap <silent>%s :call packager#plugin#on_mapping(%s, %s)', self.on_mapping, self.on_mapping, self.name)
+  silent! exe l:cmd
+endfunction
+
+function! s:plugin.setup_load_for_filetypes() abort
+  if empty(self.filetypes)
+    return
+  endif
+
+  let l:fts = join(self.filetypes, ',')
+  let l:cmd = printf('autocmd packager_on_filetype_group FileType %s packadd %s', l:fts, self.name)
+  exe l:cmd
 endfunction
 
 function! s:plugin.get_info() abort
@@ -380,4 +411,10 @@ function! s:plugin.get_content_for_status() abort
     call add(l:result, printf('  * %s', l:update))
   endfor
   return l:result
+endfunction
+
+function! packager#plugin#on_mapping(mapping, name)
+  exe 'nunmap '.a:mapping
+  exe 'packadd '.a:name
+  return feedkeys(a:mapping)
 endfunction

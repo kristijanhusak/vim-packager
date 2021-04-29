@@ -107,3 +107,7 @@ nnoremap <silent> <Plug>(PackagerGotoNextPlugin) :<C-u>call <sid>call_packager_m
 nnoremap <silent> <Plug>(PackagerGotoPrevPlugin) :<C-u>call <sid>call_packager_method('goto_plugin', 'previous')<CR>
 nnoremap <silent> <Plug>(PackagerStatus) :<C-u>call <sid>call_packager_method('status')<CR>
 nnoremap <silent> <Plug>(PackagerPluginDetails) :<C-u>call <sid>call_packager_method('open_plugin_details')<CR>
+
+augroup packager_on_filetype_group
+  autocmd!
+augroup END
