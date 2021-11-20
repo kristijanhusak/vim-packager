@@ -242,7 +242,11 @@ If `type` of package is `opt` use `packadd {packagename}__{rtp}` to load it (exa
 * `commit` - exact git commit to use. Default: '' (Check below for priority explanation)
 * `do` - Hook to run after plugin is installed/updated: Default: ''. Examples below.
 * `frozen` - When plugin is frozen, it is not being updated. Default: 0
-* `requires` - Dependencies for the plugin. Can be *string* (ex. 'kristijanhusak/vim-packager'), *list*(['kristijanhusak/vim-packager', {'type': 'opt'}]) or *dict*({'name': 'kristijanhusak/vim-packager', 'opts': {'type': 'opt'} }). See example vimrc above.
+* `requires` - Dependencies for the plugin. Can be
+  * *string* (ex. `'kristijanhusak/vim-packager'`)
+  * *list* (ex. `['kristijanhusak/vim-packager', {'type': 'opt'}]`)
+  * *dict* (ex. `{'name': 'kristijanhusak/vim-packager', 'opts': {'type': 'opt'} }`).
+    See example vimrc above.
 
 `branch`, `tag` and `commit` options go in certain priority:
 * `commit`
